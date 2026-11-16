@@ -66,7 +66,8 @@ nav.tabs a[aria-current="page"]{background:var(--card);box-shadow:0 1px 3px rgba
   nav.tabs{position:fixed;left:0;right:0;bottom:0;margin:0;border-radius:0;background:color-mix(in srgb,var(--card) 92%,transparent);
     backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border-top:.5px solid var(--sep);
     padding:6px 6px calc(6px + env(safe-area-inset-bottom));justify-content:space-around;z-index:6}
-  nav.tabs a{flex:1;text-align:center;font-size:.66rem;color:var(--muted);padding:4px 2px 2px;display:flex;flex-direction:column;align-items:center;gap:2px}
+  nav.tabs a span{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  nav.tabs a{flex:1;min-width:0;text-align:center;font-size:.66rem;color:var(--muted);padding:4px 2px 2px;display:flex;flex-direction:column;align-items:center;gap:2px}
   nav.tabs a .ti{display:block}
   nav.tabs a[aria-current="page"]{background:none;box-shadow:none;color:var(--ink);font-weight:700}
   nav.tabs a[aria-current="page"] .ti{stroke-width:2}
@@ -426,7 +427,15 @@ dialog form{display:grid;gap:14px;padding:0 0 16px}
 #life-onboard{position:fixed;inset:0;z-index:80;background:var(--bg);overflow:auto;display:flex;justify-content:center;padding:max(28px,env(safe-area-inset-top)) 18px 40px}
 #life-onboard .ob-card{max-width:520px;width:100%;display:grid;gap:14px;align-content:start}
 #life-onboard .ob-logo{font-size:2rem;letter-spacing:.1em;margin-top:12px}
-#life-onboard h1{font-size:2rem;margin:0}
+#life-onboard .ob-title{display:grid;gap:2px}
+#life-onboard .ob-k{font-size:.8rem;color:var(--muted)}
+#life-onboard .ob-title input{font:inherit;font-size:2rem;font-weight:700;color:var(--ink);background:transparent;border:0;border-bottom:1.5px dashed var(--sep);border-radius:0;padding:2px 0 6px;width:100%;outline:none}
+#life-onboard .ob-title input:focus{border-bottom-color:var(--accent)}
+#life-onboard .ob-title input::placeholder{color:var(--ink);opacity:.35}
+#life-onboard .ob-box{background:var(--card);border-radius:14px;padding:14px 16px;display:grid;gap:8px}
+#life-onboard .ob-box h2{font-size:.95rem;margin:0}
+#life-onboard .ob-box p{margin:0;font-size:.88rem;line-height:1.7;color:var(--muted)}
+#life-onboard .ob-box b{color:var(--ink);font-weight:600}
 #life-onboard .ob-lead{color:var(--ink);line-height:1.7;margin:0}
 #life-onboard .ob-list{margin:0;padding:14px 18px 14px 34px;background:var(--card);border-radius:14px;line-height:1.9;color:var(--muted);font-size:.92rem}
 #life-onboard .ob-list b{color:var(--ink);font-weight:600}
@@ -458,7 +467,6 @@ dialog form{display:grid;gap:14px;padding:0 0 16px}
     <a href="#tasks"><svg class="ti" viewBox="0 0 24 24" aria-hidden="true"><circle cx="6" cy="7" r="1.6"/><circle cx="6" cy="12" r="1.6"/><circle cx="6" cy="17" r="1.6"/><path d="M10 7h9M10 12h9M10 17h9"/></svg><span>Tasks</span></a>
     <a href="#supplies"><svg class="ti" viewBox="0 0 24 24" aria-hidden="true"><path d="M10 3.5h4v2.5h-4z"/><path d="M9 6h6l1.5 3v9.5a2 2 0 0 1-2 2h-5a2 2 0 0 1-2-2V9z"/><path d="M7.5 12.5h9"/></svg><span>Supplies</span></a>
     <a href="#finance"><svg class="ti" viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="6.5" width="17" height="12" rx="3"/><path d="M3.5 10.5h17"/><path d="M15.5 14.5h2"/></svg><span>Finance</span></a>
-    <a href="#health"><svg class="ti" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19.5s-7-4.3-7-9.6A3.9 3.9 0 0 1 12 7.5a3.9 3.9 0 0 1 7 2.4c0 5.3-7 9.6-7 9.6z"/></svg><span>Self care</span></a>
     <a href="#settings"><svg class="ti" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 3.5v2.2M12 18.3v2.2M3.5 12h2.2M18.3 12h2.2M6 6l1.6 1.6M16.4 16.4 18 18M6 18l1.6-1.6M16.4 7.6 18 6"/></svg><span>Settings</span></a>
   </nav>
 </div></header>
@@ -601,7 +609,7 @@ const LIFE_SCOPES = "openid email profile https://www.googleapis.com/auth/drive.
     async create_event(i){ const j = await api(evUrl(i.calendarId), {method: "POST", body: JSON.stringify(evBody(i))}); return {id: j.id}; },
     async update_event(i){ const j = await api(evUrl(i.calendarId, i.eventId), {method: "PATCH", body: JSON.stringify(evBody(i))}); return {id: j.id}; },
     async delete_event(i){ await api(evUrl(i.calendarId, i.eventId), {method: "DELETE"}); return {}; },
-    async list_calendars(){ return {calendars: profile?.calId ? [{id: profile.calId, summary: "👾生活"}] : []}; },
+    async list_calendars(){ return {calendars: profile?.calId ? [{id: profile.calId, summary: profile.calName || "👾生活"}] : []}; },
     async read_file_content({fileId}){
       const j = await api(`${SHEETS}/${fileId}/values/${rng("收支表!A1:Z200")}`);
       const rows = j.values || [];
@@ -652,11 +660,11 @@ const LIFE_SCOPES = "openid email profile https://www.googleapis.com/auth/drive.
   const dayIso = n => { const d = new Date(); d.setDate(d.getDate() + n); return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0"); };
   const rid = () => Math.random().toString(36).slice(2, 10) + Date.now().toString(36).slice(-4);
 
-  function seed(name, email, sheetId, calId, salary){
-    const ym = ymNow(), sal = {}; if (salary) for (let i = 0; i < 12; i++) sal[ymPlus(ym, i)] = salary;
+  function seed(name, email, sheetId, calId, appName){
+    const ym = ymNow();
     const put = (p, v) => store.set(p, v);
-    put("life/settings", {name, email, startMonth: ym, sheetId, gcalTarget: calId, gcalTargetName: "👾生活", gcalShow: [calId],
-      tutor: {rate: 0, weekdays: [], perDay: 1, skip: {}}, salary: sal, bonus: {},
+    put("life/settings", {name, appName, email, startMonth: ym, sheetId, gcalTarget: calId, gcalTargetName: "👾" + appName, gcalShow: [calId], pages: [],
+      tutor: {rate: 0, weekdays: [], perDay: 1, skip: {}}, salary: {}, bonus: {},
       fixed: [{id: rid(), name: "手機費（範例）", group: "電話", kind: "monthly", amount: 499},
               {id: rid(), name: "捷運（範例）", group: "交通", kind: "weekday", amount: 60, weekdays: [1, 2, 3, 4, 5]},
               {id: rid(), name: "串流訂閱（範例）", kind: "monthly", amount: 270, noList: true}],
@@ -664,19 +672,18 @@ const LIFE_SCOPES = "openid email profile https://www.googleapis.com/auth/drive.
       goals: {gymPerWeek: 2, racketDays: 14}, leadSupply: 7, leadHealth: 14, meal: {daily: 250, cat: "餐飲"}, payday: 5, workoutPrice: {tennis: 0, pilates: 0}});
     put("supplies/" + rid(), {name: "洗髮精（範例）", cat: "洗沐用品", cycle: 45, price: 299, inst: 1, last: dayIso(-40), note: "可以刪掉，換成你自己的"});
     put("supplies/" + rid(), {name: "衛生紙（範例）", cat: "日用品", cycle: 30, price: 199, inst: 1, last: dayIso(-10), note: ""});
-    put("health/" + rid(), {name: "洗牙（範例）", cycle: 180, price: 200, inst: 1, last: dayIso(-170), note: ""});
     put("tasks/" + rid(), {name: "洗衣服（範例）", rule: {type: "weekly", weekdays: [6]}, note: "", since: dayIso(0)});
     put("tasks/" + rid(), {name: "倒垃圾（範例）", rule: {type: "weekly", weekdays: [1, 4]}, note: "", since: dayIso(0)});
     put("shopping/" + rid(), {name: "洗碗精（範例）", qty: 1, price: 89, cat: "日用品", done: false, created: new Date().toISOString(), note: ""});
   }
-  async function createSheet(name, salary){
-    const ss = await api(SHEETS, {method: "POST", body: JSON.stringify({properties: {title: `👾 ${name} 的生活管理`, locale: "zh_TW", timeZone: tz},
+  async function createSheet(appName){
+    const ss = await api(SHEETS, {method: "POST", body: JSON.stringify({properties: {title: `👾 ${appName}`, locale: "zh_TW", timeZone: tz},
       sheets: [{properties: {title: "收支表"}}, {properties: {title: "支出紀錄"}}, {properties: {title: "_app", hidden: true}}]})});
     const id = ss.spreadsheetId;
     await api(`${DRIVE}/${id}`, {method: "PATCH", body: JSON.stringify({appProperties: {lifeapp: "1"}})});
     const ym = ymNow(), rows = [["👾 收支表"], ["每個月的實領薪資、年終、儲蓄有變動時填在這裡，app 會自動同步。空白的格子會照 app 裡的設定。"], [],
       ["月份", "實領薪資", "年終", "停課堂數", "緊急預備金", "定期定額投資", "其他儲蓄"]];
-    for (let i = 0; i < 12; i++) rows.push(["'" + ymPlus(ym, i).replace("-", "/"), salary || "", "", "", "", "", ""]);
+    for (let i = 0; i < 12; i++) rows.push(["'" + ymPlus(ym, i).replace("-", "/"), "", "", "", "", "", ""]);
     await api(`${SHEETS}/${id}/values/${rng("收支表!A1")}?valueInputOption=USER_ENTERED`, {method: "PUT", body: JSON.stringify({values: rows})});
     return id;
   }
@@ -685,34 +692,39 @@ const LIFE_SCOPES = "openid email profile https://www.googleapis.com/auth/drive.
     const j = await api(`${DRIVE}?` + new URLSearchParams({q, fields: "files(id,name,modifiedTime)", orderBy: "modifiedTime desc", pageSize: "10"}));
     return j.files || [];
   }
-  async function createCal(){ const j = await api(`${CAL}/calendars`, {method: "POST", body: JSON.stringify({summary: "👾生活", timeZone: tz})}); return j.id; }
+  async function createCal(appName){ const j = await api(`${CAL}/calendars`, {method: "POST", body: JSON.stringify({summary: "👾" + appName, timeZone: tz})}); return j.id; }
 
   function onboard(){
     const box = document.createElement("div"); box.id = "life-onboard";
     const noId = !GOOGLE_CLIENT_ID || GOOGLE_CLIENT_ID.includes("%%");
     box.innerHTML = `<div class="ob-card">
       <div class="ob-logo">👾👾👾</div>
-      <h1>生活管理</h1>
-      <p class="ob-lead">把日常任務、補貨、Self care、運動和每個月的收支放在同一個地方，並自動同步到你自己的 Google 試算表和 Google 日曆。</p>
+      <label class="ob-title"><span class="ob-k">幫你的 App 取個名字</span><input id="ob-app" type="text" maxlength="16" placeholder="生活管理" aria-label="App 名稱"></label>
+      <p class="ob-lead">把日常任務瑣事和每個月的收支放在同一個地方！</p>
       <ul class="ob-list">
         <li><b>Home</b>：今天、這週、這個月要做的事和行程，記餐費和花費</li>
         <li><b>Tasks</b>：洗衣服、倒垃圾這類固定家事，做完打勾</li>
         <li><b>Supplies</b>：日用品多久補一次、待買清單</li>
         <li><b>Finance</b>：每月收入、固定支出、儲蓄、還可以花多少</li>
-        <li><b>Self care</b>：洗牙、美甲這類定期保養，預約和花費</li>
       </ul>
+      <div class="ob-box"><h2>還可以自己新增</h2>
+        <p><b>自訂分頁</b>：在 Settings 新增像「Self care」「寵物」「汽車保養」這樣的分頁，放定期要做的事（洗牙、美甲、打預防針、換機油），設定多久一次和金額，到期前會提醒、可以記預約時間。</p>
+        <p><b>自己的清單</b>：固定支出、儲蓄項目、補貨品項和類別、支出類別、家事任務，都可以自己加、改名或刪掉。</p>
+        <p><b>預算</b>：每日餐費、發薪日、上個月結餘，App 會幫你算出今天、這週、這個月還可以花多少。</p></div>
+      <div class="ob-box"><h2>和 Google 連動</h2>
+        <p><b>Google 試算表</b>：資料會存在你自己雲端硬碟裡一份同名的試算表。「支出紀錄」分頁可以直接看每一筆花費，「收支表」分頁可以填每個月的薪資和儲蓄，App 會自動同步。</p>
+        <p><b>Google 日曆</b>：任務、補貨、預約和你新增的行程，會寫進一個同名的新日曆，手機的日曆 App 也看得到。</p></div>
       ${noId ? `<p class="ob-warn">這份 app 還沒設定 Google 用戶端 ID，請把 runtime 開頭的 GOOGLE_CLIENT_ID 換成你的 ID（見 README）。</p>` : `
       <label class="ob-f">你的名字<input id="ob-name" type="text" autocomplete="name" placeholder="例：小明"></label>
-      <label class="ob-f">每月實領薪資（選填，之後可以改）<input id="ob-sal" type="number" inputmode="numeric" min="0" placeholder="例：38000"></label>
       <button class="ob-btn" type="button" id="ob-go">用 Google 帳號開始</button>
-      <p class="ob-note">登入後會在你的 Google 雲端硬碟建立一份「👾 你的名字 的生活管理」試算表，並建立一個「👾生活」日曆。這個 app 只能看到它自己建立的檔案和日曆，看不到你其他的資料。</p>
+      <p class="ob-note">這個 App 只能看到它自己建立的試算表和日曆，看不到你雲端硬碟和日曆裡的其他資料。</p>
       <p class="ob-msg" id="ob-msg" role="status"></p>`}
     </div>`;
     document.body.appendChild(box);
     const go = box.querySelector("#ob-go"); if (!go) return;
     const msg = t => { box.querySelector("#ob-msg").textContent = t; };
     go.addEventListener("click", async () => {
-      const name = box.querySelector("#ob-name").value.trim(), salary = Number(box.querySelector("#ob-sal").value) || 0;
+      const name = box.querySelector("#ob-name").value.trim(), appName = box.querySelector("#ob-app").value.trim() || "生活管理";
       if (!name){ msg("請先輸入名字"); box.querySelector("#ob-name").focus(); return; }
       go.disabled = true; msg("正在開啟 Google 登入…");
       const r = await signIn("consent");
@@ -723,15 +735,16 @@ const LIFE_SCOPES = "openid email profile https://www.googleapis.com/auth/drive.
         const old = await findSheets().catch(() => []);
         let sheetId, fresh = true;
         if (old.length && await (window.confirmLife ? window.confirmLife(`找到你之前的試算表「${old[0].name}」，要繼續用它嗎？\n選「取消」會建立一份新的。`) : Promise.resolve(false))){ sheetId = old[0].id; fresh = false; }
-        else sheetId = await createSheet(name, salary);
-        profile = {name, email: me.email || "", sheetId, calId: null}; lsSet("profile", profile);
+        else sheetId = await createSheet(appName);
+        profile = {name, email: me.email || "", sheetId, calId: null, calName: "👾" + appName}; lsSet("profile", profile);
         if (!fresh){
           const j = await api(`${SHEETS}/${sheetId}/values/${rng("_app!A1:Z")}`); const m = fromRows(j.values);
           for (const [k, v] of m) store.set(k, v);
-          profile.calId = m.get("life/settings")?.gcalTarget || await createCal();
+          profile.calId = m.get("life/settings")?.gcalTarget || await createCal(appName);
+          profile.calName = m.get("life/settings")?.gcalTargetName || profile.calName;
         } else {
-          profile.calId = await createCal();
-          seed(name, me.email || "", sheetId, profile.calId, salary);
+          profile.calId = await createCal(appName);
+          seed(name, me.email || "", sheetId, profile.calId, appName);
         }
         const st = store.get("life/settings"); if (st){ st.name = name; st.email = me.email || st.email || ""; st.gcalTarget = profile.calId; st.gcalShow = [profile.calId]; st.sheetId = sheetId; }
         lsSet("profile", profile); loadedRemote = true; dirty = true; persistLocal(); await save();
@@ -754,6 +767,7 @@ const LIFE_SCOPES = "openid email profile https://www.googleapis.com/auth/drive.
       if (!profile) return "";
       const body = `<div class="rowi"><span class="main"><span class="t">${esc(profile.name)}</span><span class="s">${esc(profile.email || "")}</span></span>
           <a class="link" href="https://docs.google.com/spreadsheets/d/${esc(profile.sheetId)}/edit" target="_blank" rel="noopener">開啟試算表 ↗</a></div>
+        <div class="pad"><label class="f">App 名稱<input id="acct-app" type="text" maxlength="16" data-bind="appName" data-type="text" value="${esc((typeof S !== "undefined" && S.settings?.appName) || "")}" placeholder="生活管理"></label></div>
         <div class="pad" style="display:flex;gap:18px;flex-wrap:wrap"><button class="link" type="button" data-life="reconnect">重新連線 Google</button>
           <button class="link" type="button" data-life="newsheet">建立新的試算表</button>
           <button class="link red" type="button" data-life="logout">登出</button></div>`;
@@ -994,6 +1008,20 @@ function supplyTaskRows(list){
     <span class="s"><span class="datepill">${mdEn(x.next)}</span>${it.cat ? `・${esc(it.cat)}` : ""}${it.price ? `・${money(unitPrice(it))}` : ""}</span></span></div>`).join("");
 }
 const leadHealth = () => Number(S.settings?.leadHealth ?? 14);
+/* ---------- custom pages (定期事項分頁；預設只有 Self care) ---------- */
+const PAGES_DEFAULT = [{id:"health", name:"Self care"}];
+const pages = () => Array.isArray(S.settings?.pages) ? S.settings.pages : PAGES_DEFAULT;
+const pageOf = it => it?.page || "health";
+const pageById = id => pages().find(p => p.id === id);
+const pageName = it => pageById(pageOf(it))?.name || "定期事項";
+const pageKey = p => p.id === "health" ? "health" : "pg-" + p.id;
+const pageFromTab = t => pages().find(p => pageKey(p) === t);
+const careLabel = () => pages().map(p => p.name).join("／");
+const careItem = id => S.health.find(h => h.id === id);
+const careCats = pid => pid === "health" ? HEALTH_CATS : [pageById(pid)?.name].filter(Boolean);
+const colCat = (col, it) => col === "supplies" ? "日用品" : pageOf(it) === "health" ? "醫療保健" : pageName(it);
+const colName = (col, it) => col === "supplies" ? "補貨" : pageName(it);
+const srcCare = src => { const m = String(src||"").match(/^health:([^:]+):/); return m ? careItem(m[1]) || {page: "__gone"} : null; };
 
 /* ---------- workouts ---------- */
 const allWorkouts = () => Object.values(S.workouts).flatMap(m => m.items || []);
@@ -1031,8 +1059,8 @@ function eventsOn(d){
     if (iso(x.next) === key) ev.push({type:"supply", id:it.id, text:`補貨 ${it.name}`});
     else if (isToday && x.days < 0) ev.push({type:"supply", id:it.id, text:`補貨 ${it.name}（逾期 ${-x.days} 天）`}); });
   S.health.forEach(it => { const x = due(it, leadHealth()); if (!x.next) return;
-    if (iso(x.next) === key) ev.push({type:"health", id:it.id, booked:!!it.booked, text: x.booked ? `${it.name}（預約）` : it.name, time: it.booked && it.bookedTime ? `${it.bookedTime}–${it.bookedEnd || ""}` : "", where: it.booked ? it.bookedWhere || "" : ""});
-    else if (isToday && x.days < 0 && !it.booked) ev.push({type:"health", id:it.id, text:`${it.name}（逾期 ${-x.days} 天）`}); });
+    if (iso(x.next) === key) ev.push({type:"health", label: pageName(it), id:it.id, booked:!!it.booked, text: x.booked ? `${it.name}（預約）` : it.name, time: it.booked && it.bookedTime ? `${it.bookedTime}–${it.bookedEnd || ""}` : "", where: it.booked ? it.bookedWhere || "" : ""});
+    else if (isToday && x.days < 0 && !it.booked) ev.push({type:"health", label: pageName(it), id:it.id, text:`${it.name}（逾期 ${-x.days} 天）`}); });
   return (S.gcal[key] || []).map(g => ({type:"gcal", ...g})).concat(ev);
 }
 function spentOn(d){ const key = iso(d); return sum((S.spend[key.slice(0,7)]?.items||[]).filter(x => x.date === key), x => Number(x.amount)||0); }
@@ -1086,14 +1114,25 @@ function maybePush(){
   const sig = JSON.stringify([S.tasks, S.health, S.supplies, Object.keys(S.workouts).map(k => S.workouts[k]), S.settings?.leadHealth, S.settings?.leadSupply]);
   if (sig !== lastPushSig){ lastPushSig = sig; schedulePush(); }
 }
+const TAG_ICON = '<svg class="ti" viewBox="0 0 24 24" aria-hidden="true"><path d="M4.5 12.3V5.5a1 1 0 0 1 1-1h6.8l7.2 7.2a1 1 0 0 1 0 1.4l-6 6a1 1 0 0 1-1.4 0z"/><circle cx="8.6" cy="8.6" r="1.3"/></svg>';
+const HEART_ICON = '<svg class="ti" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19.5s-7-4.3-7-9.6A3.9 3.9 0 0 1 12 7.5a3.9 3.9 0 0 1 7 2.4c0 5.3-7 9.6-7 9.6z"/></svg>';
+function renderNav(){
+  const nav = document.getElementById("tabs"), sig = JSON.stringify(pages()); if (!nav || nav.dataset.sig === sig) return;
+  nav.dataset.sig = sig; nav.querySelectorAll("a[data-page]").forEach(a => a.remove());
+  const before = nav.querySelector('a[href="#settings"]');
+  for (const pg of pages()){ const a = document.createElement("a"); a.href = "#" + pageKey(pg); a.dataset.page = pg.id; a.innerHTML = (pg.id === "health" ? HEART_ICON : TAG_ICON) + `<span>${esc(pg.name)}</span>`; nav.insertBefore(a, before); }
+  if (S.settings?.appName){ document.title = S.settings.appName; const br = document.querySelector(".brand"); if (br) br.textContent = "👾 " + S.settings.appName; }
+}
 function render(){
   maybePush();
+  renderNav();
   document.querySelectorAll("#tabs a").forEach(a => a.setAttribute("aria-current", a.getAttribute("href") === "#"+ui.tab ? "page" : "false"));
   const ae = document.activeElement; const keepId = ae && ae.id && app.contains(ae) ? ae.id : null;
-  const R = {settings:renderSettingsPage, home:renderHome, tasks:renderTasks, finance:renderFinance, supplies:renderSupplies, health:renderHealth};
+  const R = {settings:renderSettingsPage, home:renderHome, tasks:renderTasks, finance:renderFinance, supplies:renderSupplies};
   if (ui.tab === "home") gcalSync();
   sheetSync();
-  app.innerHTML = (R[ui.tab] || renderHome)();
+  const pg = pageFromTab(ui.tab);
+  app.innerHTML = pg ? renderHealth(pg.id) : (R[ui.tab] || renderHome)();
   enhanceRows();
   if (keepId) document.getElementById(keepId)?.focus();
 }
@@ -1215,7 +1254,7 @@ function openFree(view, d, ym){
     <div class="group">
     ${R("其他支出", neg(f.otherSpent), {act: "otherSpent"})}
     ${R("還可以花", money(f.remaining), {b: true})}
-    ${f.plannedTotal ? R("預計補貨／Self care", neg(f.plannedTotal), {act: "plannedDetail"}) : ""}
+    ${f.plannedTotal ? R(`預計補貨${pages().length ? "／" + esc(careLabel()) : ""}`, neg(f.plannedTotal), {act: "plannedDetail"}) : ""}
     ${R("自由花用", money(f.afterPlanned), {b: true, sub: daysLeft ? `剩 ${daysLeft} 天・平均每天 ${money(avg)}` : ""})}</div>`;
   if (view !== "month") body += `<div class="group">${R(view === "day" ? "今天可以花" : `這週還可以花`, money(view === "day" ? (ahead ? avg : 0) : avg * ahead), {b: true, sub: view === "day" ? "平均每天" : `${money(avg)} × ${ahead} 天`})}</div>`;
   dlg.innerHTML = `<form method="dialog">
@@ -1335,13 +1374,13 @@ function renderDay(d){
   }
   dueRows.sort((a,b) => a.x.days - b.x.days);
   const dueHtml = dueRows.map(({col,it,x,verb}) => `<div class="rowi" data-item="${col}" data-id="${it.id}"><span class="main"><span class="t">${esc(it.name)} <span class="tag ${x.level}">${x.label}</span></span>
-    <span class="s">${col==="supplies"?"補貨":"Self care"}・${mdEn(x.next)}${it.price ? `・${money(it.price)}` : ""}</span></span>
+    <span class="s">${esc(colName(col, it))}・${mdEn(x.next)}${it.price ? `・${money(it.price)}` : ""}</span></span>
     ${col === "health" ? healthActs(it) : `<button class="btn sm gray" data-act="restock" data-col="${col}" data-id="${it.id}">${verb}</button>`}</div>`).join("");
   const items = (S.spend[key.slice(0,7)]?.items||[]).filter(x => x.date === key && !(S.settings?.meal?.daily && x.cat === mealCat()));
   return `<div class="grid2">
     <div class="sec" style="gap:22px">
       ${(() => { const hr = isToday ? healthReminders() : [], cr = isToday ? cardReminders() : [], sr = isToday ? supplyTasks() : []; return sec("Tasks", (tlist.length || hr.length || cr.length || sr.length) ? cardRows(cr) + taskRows(tlist) + supplyTaskRows(sr) + reminderRows(hr) : `<p class="empty">${isToday ? "今天沒有例行任務。" : "這天沒有例行任務。"}</p>`, tlist.length ? `${tDone}/${tlist.length} 完成` : ""); })()}
-      ${(() => { const ev = eventsOn(d); return sec("Events", ev.map((e,i) => `<div class="rowi tap" data-act="openEvent" data-d="${key}" data-i="${i}"><span class="main"><span class="t">${esc(e.text)}</span><span class="s">${EV_LABEL[e.type]||""}${e.time ? `・${esc(e.time)}` : ""}</span></span><span class="v" aria-hidden="true">›</span></div>`).join("") + `<div class="rowi tap" data-act="newGEvent" data-d="${key}"><span class="main"><span class="t" style="color:var(--accent)">＋ 新增行程</span><span class="s">會同步到 Google 生活日曆</span></span></div>`, ev.length ? `${ev.length} 個` : ""); })()}
+      ${(() => { const ev = eventsOn(d); return sec("Events", ev.map((e,i) => `<div class="rowi tap" data-act="openEvent" data-d="${key}" data-i="${i}"><span class="main"><span class="t">${esc(e.text)}</span><span class="s">${esc(e.label || EV_LABEL[e.type] || "")}${e.time ? `・${esc(e.time)}` : ""}</span></span><span class="v" aria-hidden="true">›</span></div>`).join("") + `<div class="rowi tap" data-act="newGEvent" data-d="${key}"><span class="main"><span class="t" style="color:var(--accent)">＋ 新增行程</span><span class="s">會同步到 Google 生活日曆</span></span></div>`, ev.length ? `${ev.length} 個` : ""); })()}
       ${mealDaySec(d)}
       ${sec("Expenses", `<div class="pad">${spendForm(key, "home")}</div>${spendRows(items)}`, items.length ? `合計 ${money(sum(items, x => Number(x.amount)||0))}` : "")}
     </div>
@@ -1415,7 +1454,7 @@ function renderMonth(c){
   }
   const gymCount = allWorkouts().filter(x => x.type === "gym" && x.date.startsWith(ym)).length;
   const racketCount = allWorkouts().filter(x => x.type !== "gym" && x.date.startsWith(ym)).length;
-  return `<section class="sec"><div class="sec-h"><span>${ymEn(ym)}</span><span class="legend" style="text-transform:none"><span style="color:var(--accent)">Tasks</span><span style="color:var(--ink)">Work</span><span style="color:var(--teal)">Tutoring</span><span style="color:var(--indigo)">Workout</span><span style="color:var(--orange)">Supplies</span><span style="color:var(--green)">Self care</span></span></div>
+  return `<section class="sec"><div class="sec-h"><span>${ymEn(ym)}</span><span class="legend" style="text-transform:none"><span style="color:var(--accent)">Tasks</span><span style="color:var(--ink)">Work</span><span style="color:var(--teal)">Tutoring</span><span style="color:var(--indigo)">Workout</span><span style="color:var(--orange)">Supplies</span>${pages().length ? `<span style="color:var(--green)">${esc(careLabel())}</span>` : ""}</span></div>
     <div class="group"><div class="cal">${cells}</div></div>
     <div class="sec-f">本月 Gym ${gymCount} 次・Tennis / Pilates ${racketCount} 次　${gcalNote()}　${gpushNote()}</div></section>`;
 }
@@ -1439,7 +1478,7 @@ function renderTasks(){
       <div class="sec" style="gap:22px">
       ${(() => { const sr = supplyTasks(); return sec("Today", (od.length || tasksOn(t0).length || sr.length) ? taskRows(od.concat(tasksOn(t0))) + supplyTaskRows(sr) : `<p class="empty">今天沒有例行任務。</p>`); })()}
       ${(() => { const cr = cardReminders(); return cr.length ? sec("Bills", cardRows(cr)) : ""; })()}
-      ${(() => { const hr = healthReminders(); return sec("Self care", hr.length ? reminderRows(hr) : `<p class="empty">未來 ${leadHealth()} 天沒有要預約或處理的事項。</p>`, hr.length ? `${hr.length} 項` : ""); })()}
+      ${!pages().length ? "" : (() => { const hr = healthReminders(); return sec(pages().length === 1 ? esc(pages()[0].name) : "Reminders", hr.length ? reminderRows(hr) : `<p class="empty">未來 ${leadHealth()} 天沒有要預約或處理的事項。</p>`, hr.length ? `${hr.length} 項` : ""); })()}
       </div>
       ${sec("All Tasks", rows || `<p class="empty">還沒有任務，按右上角新增。</p>`, `${S.tasks.length} 項`, "點一下編輯；手機向左滑、電腦按右鍵可以編輯或刪除。")}
     </div>`;
@@ -1563,7 +1602,7 @@ function billItems(ym){
   }
   for (const x of f.insts){
     const key = `inst:${x.p.id}:${x.idx}`;
-    out.push({key, kind: "inst", name: x.p.name.replace(/^(補貨|Self care)：/, ""), amount: x.value, done: !!chk[key], sub: `分期 ${x.idx+1}/${x.p.n}`});
+    out.push({key, kind: "inst", name: /^(supplies|health):/.test(String(x.p.src||"")) ? x.p.name.replace(/^[^：]+：/, "") : x.p.name, amount: x.value, done: !!chk[key], sub: `分期 ${x.idx+1}/${x.p.n}`});
   }
   for (const col of ["supplies", "health"]){
     for (const it of S[col]){
@@ -1590,7 +1629,7 @@ function billsSec(ym){
   const label = {fixed: "固定", inst: "分期", supplies: "補貨", health: "Self care"};
   const row1 = x => `<div class="rowi bill ${x.done ? "done" : ""}">
     <button class="check" role="checkbox" aria-checked="${x.done}" aria-label="${x.done ? "取消" : "完成"} ${esc(x.name)}" data-act="billTick" data-key="${esc(x.key)}" data-ym="${ym}"></button>
-    <span class="main" data-act="billEdit" data-key="${esc(x.key)}" data-ym="${ym}" role="button" tabindex="0"><span class="t">${esc(x.name)}</span><span class="s">${label[x.kind]}${x.sub ? `・${x.sub}` : ""}${x.kind === "fixed" && x.amount !== x.planned ? `・預扣 ${money(x.planned)}` : ""}</span></span>
+    <span class="main" data-act="billEdit" data-key="${esc(x.key)}" data-ym="${ym}" role="button" tabindex="0"><span class="t">${esc(x.name)}</span><span class="s">${x.kind === "health" ? esc(pageName(careItem(x.id))) : label[x.kind]}${x.sub ? `・${x.sub}` : ""}${x.kind === "fixed" && x.amount !== x.planned ? `・預扣 ${money(x.planned)}` : ""}</span></span>
     <span class="v">${money(x.amount)}</span></div>`;
   const todo = sorted.filter(x => !x.done);
   const rows = (todo.length ? todo.map(row1).join("") : `<p class="empty">這個月預扣的都完成了。</p>`)
@@ -1668,7 +1707,8 @@ function recurStats(ym){
     return {name: it.name, v, sub, col, id: it.id};
   }).filter(x => x.v > 0);
   groups.push({name: "補貨", c: "var(--c-spend)", hatch: true, items: per("supplies")});
-  groups.push({name: "Self care", c: "var(--c-spend)", items: per("health")});
+  const careAll = per("health");
+  pages().forEach(pg => groups.push({name: pg.name, c: "var(--c-spend)", items: careAll.filter(x => pageOf(careItem(x.id)) === pg.id)}));
   const inst = f.insts.filter(x => !/^(supplies|health):/.test(String(x.p.src||""))).map(x => ({name: x.p.name, v: x.value, sub: `分期 ${x.idx+1}/${x.p.n}`}));
   if (inst.length) groups.push({name: "其他分期", c: "var(--c-inc)", items: inst});
   groups.forEach(g => { g.items.sort((a,b) => b.v - a.v); g.v = sum(g.items, x => x.v); });
@@ -1710,6 +1750,9 @@ function guideSec(){
     <p style="margin:0 0 8px"><b>每月收入</b>：在下面的 Monthly Income 填實領薪資；也可以填在你的 Google 試算表「收支表」，app 會自動同步。</p>
     <p style="margin:0 0 8px"><b>固定支出</b>：手機費、交通、訂閱等。勾「列入清單」的會出現在每月的預扣清單，付完打勾就好，不用再記帳。</p>
     <p style="margin:0 0 8px"><b>記帳</b>：右下角「＋」可以記一筆支出、記餐費、加入待買。清單裡已經預扣的東西打勾就好。</p>
+    <p style="margin:0 0 8px"><b>自訂分頁</b>：在下面的 Custom Pages 新增像「Self care」「寵物」「汽車保養」的分頁，放定期要做的事，設定多久一次和金額，到期前會提醒、可以記預約時間。</p>
+    <p style="margin:0 0 8px"><b>Google 試算表</b>：上面「開啟試算表」可以看到你的資料，「支出紀錄」分頁是每一筆花費，「收支表」分頁可以填每月薪資和儲蓄。</p>
+    <p style="margin:0 0 8px"><b>Google 日曆</b>：任務、補貨、預約和新增的行程會寫進 App 自己建立的日曆，手機的日曆 App 也看得到。</p>
     <p style="margin:0"><b>手機桌面</b>：iPhone 用 Safari 開，按分享 →「加入主畫面」；Android 用 Chrome 選「安裝應用程式」。</p>
   </div></details>`;
 }
@@ -1794,10 +1837,10 @@ function renderSettings(ym){
       <label class="f">補貨提前幾天提醒<input id="s-ls" type="number" data-bind="leadSupply" value="${s.leadSupply ?? 7}"></label>
       <label class="f">發薪日（每月幾號）<input id="s-pd" type="number" min="1" max="28" data-bind="payday" value="${s.payday ?? 16}"></label>
       <label class="f">補貨提前幾天放進 Tasks<input id="s-lst" type="number" data-bind="leadSupplyTask" value="${s.leadSupplyTask ?? 3}"></label>
-      <label class="f">Self care 提前幾天提醒<input id="s-lh" type="number" data-bind="leadHealth" value="${s.leadHealth ?? 14}"></label>
+      ${pages().length ? `<label class="f">${esc(careLabel())} 提前幾天提醒<input id="s-lh" type="number" data-bind="leadHealth" value="${s.leadHealth ?? 14}"></label>` : ""}
     </div>
     ${CLOSE}${OPEN("Google Calendar")}
-    <label class="toggle"><input id="s-gsync" type="checkbox" data-gsync ${S.settings?.gsyncOff ? "" : "checked"}><span>把任務、Self care、補貨、運動寫入 Google 日曆（標題前有 👾、不提醒）</span></label>
+    <label class="toggle"><input id="s-gsync" type="checkbox" data-gsync ${S.settings?.gsyncOff ? "" : "checked"}><span>把任務、${pages().length ? esc(careLabel()) + "、" : ""}補貨、運動寫入 Google 日曆（標題前有 👾、不提醒）</span></label>
     <div class="frow" style="grid-template-columns:1fr auto">
       <label class="f">寫入哪個日曆<select id="s-gtarget" data-gtarget>
         <option value="">— 請選擇生活用的日曆 —</option>
@@ -1813,6 +1856,7 @@ function renderSettings(ym){
     </div>
     ${CLOSE}</div>
     ${catManager()}
+    ${pageManager()}
     ${spendCatSection()}
     ${OPEN("Backup")}<div><button class="link" data-act="copyBackup">複製全部資料</button></div>${CLOSE}`;
 }
@@ -1846,14 +1890,21 @@ function renderDueList(col){
 }
 /* ---------- supplies & health pages ---------- */
 const HEALTH_CATS = ["醫療保健", "Health care"];
-function colSpend(col, ym){
-  const items = (S.spend[ym]?.items || []).filter(x => String(x.src||"").startsWith(col + ":") || (col === "supplies" ? String(x.src||"").startsWith("shopping:") || x.cat === "日用品" : HEALTH_CATS.includes(x.cat)));
-  const inst = instIn(ym).filter(x => String(x.p.src||"").startsWith(col + ":") || (!x.p.src && (col === "health" ? HEALTH_CATS.includes(x.p.cat) : x.p.cat === "日用品")));
+function careMatch(src, cat, pid){
+  const it = srcCare(src);
+  if (it) return pid == null ? it.page !== "__gone" : pageOf(it) === pid;
+  if (src && String(src).startsWith("health:")) return false;
+  return (pid == null ? pages().map(p => p.id) : [pid]).some(id => careCats(id).includes(cat));
+}
+function colSpend(col, ym, pid){
+  const items = (S.spend[ym]?.items || []).filter(x => col === "supplies" ? (String(x.src||"").startsWith("supplies:") || String(x.src||"").startsWith("shopping:") || x.cat === "日用品") : careMatch(x.src, x.cat, pid));
+  const inst = instIn(ym).filter(x => col === "supplies" ? (String(x.p.src||"").startsWith("supplies:") || (!x.p.src && x.p.cat === "日用品")) : careMatch(x.p.src, x.p.src ? "" : x.p.cat, pid));
   return {items, inst, total: sum(items, x => Number(x.amount)||0) + sum(inst, x => x.value)};
 }
-function colChart(col, color, hatchColor){
+const plannedOf = (m, col, pid) => plannedIn(m).filter(p => p.col === col && (pid == null || pageOf(p.it) === pid));
+function colChart(col, color, hatchColor, pid){
   const st = startYm(), cur = ymOf(new Date()), months = [...Array(12)].map((_,i) => ymAdd(st, i));
-  const rows = months.map(m => { const a = m <= cur ? colSpend(col, m).total : 0, pl = sum(plannedIn(m).filter(p => p.col === col), p => p.amount); return {m, a, pl}; });
+  const rows = months.map(m => { const a = m <= cur ? colSpend(col, m, pid).total : 0, pl = sum(plannedOf(m, col, pid), p => p.amount); return {m, a, pl}; });
   const AW = app.clientWidth || 900, W = Math.round((AW > 700 ? (AW - 12) / 2 : AW) - 28), H = 180, L = 36, R = 6, T = 16, B = 22, iw = W - L - R, ih = H - T - B;
   const maxV = Math.max(1000, ...rows.map(r => r.a + r.pl));
   const step = [500, 1000, 2000, 5000, 10000, 20000].find(x => maxV / x <= 5) || 50000, top = Math.ceil(maxV / step) * step, y = v => T + ih - v / top * ih;
@@ -1917,23 +1968,25 @@ function renderSupplies(){
       ${catList.length ? sec("By Category", catBars(catList, "var(--accent)"), "每月平均") : ""}</div>
     </div>`;
 }
-function healthRecords(){
+function healthRecords(pid){
   const months = [...new Set(Object.keys(S.spend))].sort().reverse();
-  const recs = months.flatMap(m => colSpend("health", m).items).sort((a,b) => b.date.localeCompare(a.date));
-  const plans = S.installments.filter(p => String(p.src||"").startsWith("health:") || HEALTH_CATS.includes(p.cat));
+  const recs = months.flatMap(m => colSpend("health", m, pid).items).sort((a,b) => b.date.localeCompare(a.date));
+  const plans = S.installments.filter(p => careMatch(p.src, p.src ? "" : p.cat, pid));
   return {recs, plans};
 }
-function renderHealth(){
+function renderHealth(pid = "health"){
+  const pg = pageById(pid) || {id: pid, name: "定期事項"};
   const lead = leadHealth(), today = today0(), cur = ymOf(today), yr = cur.slice(0,4);
-  const items = S.health.map(it => ({it, x: due(it, lead)})).sort((a,b) => (a.x.days ?? 1e9) - (b.x.days ?? 1e9));
-  const {recs, plans} = healthRecords();
+  const mine = S.health.filter(it => pageOf(it) === pid);
+  const items = mine.map(it => ({it, x: due(it, lead)})).sort((a,b) => (a.x.days ?? 1e9) - (b.x.days ?? 1e9));
+  const {recs, plans} = healthRecords(pid);
   const yearMonths = [...Array(12)].map((_,i) => `${yr}-${pad(i+1)}`).filter(m => m <= cur);
-  const yearSpent = sum(yearMonths, m => colSpend("health", m).total);
-  const next12 = sum([...Array(12)].map((_,i) => ymAdd(cur, i)), m => sum(plannedIn(m).filter(p => p.col === "health"), p => p.amount) + sum(colSpend("health", m).inst, x => x.value));
-  const thisMonth = colSpend("health", cur).total + sum(plannedIn(cur).filter(p => p.col === "health"), p => p.amount);
+  const yearSpent = sum(yearMonths, m => colSpend("health", m, pid).total);
+  const next12 = sum([...Array(12)].map((_,i) => ymAdd(cur, i)), m => sum(plannedOf(m, "health", pid), p => p.amount) + sum(colSpend("health", m, pid).inst, x => x.value));
+  const thisMonth = colSpend("health", cur, pid).total + sum(plannedOf(cur, "health", pid), p => p.amount);
   const nx = items.find(i => i.x.next && i.x.days >= 0) || items.find(i => i.x.next);
   const next12m = [...Array(12)].map((_,i) => ymAdd(cur, i));
-  const perItem = S.health.map(it => { const pre = `health:${it.id}:`;
+  const perItem = mine.map(it => { const pre = `health:${it.id}:`;
     const v = sum(next12m, m => sum(plannedIn(m).filter(p => p.col === "health" && p.it.id === it.id), p => p.amount) + sum(instIn(m).filter(x => String(x.p.src||"").startsWith(pre)), x => x.value))
       + sum((S.spend[cur]?.items || []).filter(x => String(x.src||"").startsWith(pre)), x => Number(x.amount)||0);
     return [it.name, v, `data-act="plEdit" data-col="health" data-id="${it.id}"`]; }).filter(x => x[1] > 0).sort((a,b) => b[1] - a[1]);
@@ -1941,7 +1994,7 @@ function renderHealth(){
     <span class="s">${x.next ? mdEn(x.next) : "未設定"}・每 ${it.cycle || "?"} 天・${it.price ? money(it.price) + ((Number(it.inst)||1) >= 2 ? `（分 ${it.inst} 期）` : "") : "未填金額"}${it.note ? `・${esc(it.note)}` : ""}</span></span>${healthActs(it)}</div>`;
   const recRows = recs.slice(0, 12).map(x => `<div class="rowi" data-item="spend" data-ym="${x.date.slice(0,7)}" data-id="${x.id}"><span class="main"><span class="t">${esc(x.note || x.cat)}</span><span class="s">${mdEn(parseISO(x.date))}, ${x.date.slice(0,4)}${x.pay === "cash" ? "・現金" : ""}</span></span><span class="v strong">${money(x.amount)}</span></div>`).join("")
     + plans.map(pl => { const done = Math.max(0, Math.min(pl.n, monthsBetween(pl.start, cur) + 1)); return `<div class="rowi tap" data-act="openInstFromGroup" data-id="${pl.id}"><span class="main"><span class="t">${esc(pl.name)}</span><span class="s">分期 ${pl.n} 期・${Number(pl.start.slice(5))}/${pl.start.slice(0,4)} 起・已付 ${done} 期</span></span><span class="v strong">${money(pl.total)}</span></div>`; }).join("");
-  return `<div class="large"><div><h1>Self care</h1></div><button class="btn" data-act="newItem" data-col="health">新增事項</button></div>
+  return `<div class="large"><div><h1>${esc(pg.name)}</h1></div><button class="btn" data-act="newItem" data-col="health" data-page="${esc(pid)}">新增事項</button></div>
     ${sec("Overview", ovTiles([
       {k: `${yr} 年已花`, v: money(yearSpent), x: recs.length ? `${recs.length} 筆紀錄` : "還沒有紀錄"},
       {k: "未來 12 個月", v: money(next12), x: "依週期與分期估算"},
@@ -1949,16 +2002,16 @@ function renderHealth(){
       {k: "下一次", v: nx ? esc(nx.it.name) : "—", x: nx?.x.next ? `${mdEn(nx.x.next)}・${nx.x.label}` : ""}]))}
     <div class="grid2">
       <div class="sec" style="gap:22px">
-      ${sec("Spending", colChart("health", "var(--c-spend)", "var(--c-spend)"), `未來 12 個月 ${money(next12)}`)}
+      ${sec("Spending", colChart("health", "var(--c-spend)", "var(--c-spend)", pid), `未來 12 個月 ${money(next12)}`)}
       ${perItem.length ? sec("By Item", catBars(perItem, "var(--c-spend)"), "未來 12 個月") : ""}</div>
       <div class="sec" style="gap:22px">
       ${sec("Upcoming", items.length ? items.map(upRow).join("") : `<p class="empty">還沒有事項，按右上角新增。</p>`, `${items.length} 項`)}
       ${sec("History", recRows || `<p class="empty">按 Done 記錄花費後，會出現在這裡。</p>`, recs.length ? `共 ${money(sum(recs, x => Number(x.amount)||0))}` : "")}</div>
     </div>`;
 }
-function openColSpent(col, ym){
-  const sp = colSpend(col, ym);
-  openList(`${col === "supplies" ? "補貨" : "Self care"}花費・${ymZh(ym)}`, sp.items.map(x => `<div class="fld tap" data-act="editSpendFromList" data-ym="${x.date.slice(0,7)}" data-id="${x.id}" style="grid-template-columns:1fr auto;cursor:pointer"><span>${esc(x.note || x.cat)}<br><span class="note">${esc(x.cat)}・${mdEn(parseISO(x.date))}</span></span><span>${money(x.amount)}</span></div>`).join("")
+function openColSpent(col, ym, pid){
+  const sp = colSpend(col, ym, pid);
+  openList(`${col === "supplies" ? "補貨" : (pageById(pid)?.name || careLabel())}花費・${ymZh(ym)}`, sp.items.map(x => `<div class="fld tap" data-act="editSpendFromList" data-ym="${x.date.slice(0,7)}" data-id="${x.id}" style="grid-template-columns:1fr auto;cursor:pointer"><span>${esc(x.note || x.cat)}<br><span class="note">${esc(x.cat)}・${mdEn(parseISO(x.date))}</span></span><span>${money(x.amount)}</span></div>`).join("")
     + sp.inst.map(x => `<div class="fld" style="grid-template-columns:1fr auto"><span>${esc(x.p.name)}<br><span class="note">分期 ${x.idx+1}/${x.p.n}</span></span><span>${money(x.value)}</span></div>`).join(""), sp.total);
 }
 function shoppingSec(){
@@ -2013,6 +2066,16 @@ function catManager(){
     <form class="rowi" data-form="cat"><span class="main"><input id="cat-new" name="name" type="text" placeholder="新類別，例：洗沐用品"></span><button class="link" type="submit">新增</button></form>
   </div><div class="sec-f">直接點名稱就能改名，品項會一起更新。刪除類別時，裡面的品項會移到「未分類」。</div></section>`;
 }
+const MAX_PAGES = 3;
+function pageManager(){
+  const ps = pages();
+  return `<section class="sec"><div class="sec-h"><span>Custom Pages</span><b>${ps.length} / ${MAX_PAGES}</b></div><div class="group">
+    ${ps.map((pg,i) => `<div class="rowi catrow"><span class="main"><input id="pg-${i}" type="text" data-pagename="${i}" value="${esc(pg.name)}" aria-label="分頁名稱"></span>
+      <span class="v">${S.health.filter(x => pageOf(x) === pg.id).length} 項</span>
+      <button class="link red" data-act="delPage" data-i="${i}">刪除</button></div>`).join("")}
+    ${ps.length < MAX_PAGES ? `<form class="rowi" data-form="page"><span class="main"><input id="pg-new" name="name" type="text" maxlength="12" placeholder="新分頁，例：Self care、寵物、汽車保養"></span><button class="link" type="submit">新增</button></form>` : ""}
+  </div><div class="sec-f">每個分頁會出現在選單上，用來放定期要做的事，例如洗牙、美甲、寵物打預防針、汽車保養。設定多久一次和金額後，到期前會提醒、可以記預約時間並同步到 Google 日曆，花費也會算進每月的預扣。</div></section>`;
+}
 function spendCatSection(){
   const cats = spendCats();
   return `<section class="sec"><div class="sec-h"><span>Expense Categories</span><b>${cats.length} 個類別</b></div><div class="group">
@@ -2026,12 +2089,13 @@ function setCats(list){ S.settings.supplyCats = list; saveSettings(); }
 const dlg = document.getElementById("dlg");
 const fld = (label, control, extra="") => `<label class="fld ${extra}"><span>${label}</span>${control}</label>`;
 const dlgBar = (title, left="取消") => `<div class="dlg-bar"><button class="link" type="button" data-act="close">${left}</button><h2>${title}</h2><button class="link" type="submit" style="font-weight:600">完成</button></div>`;
-function openItem(col, id){
+function openItem(col, id, pid){
   const isS = col === "supplies", it = id ? S[col].find(x => x.id === id) : {name:"", cat:supplyCats()[0], last:iso(new Date()), cycle: isS ? 60 : 180};
-  dlg.innerHTML = `<form method="dialog" data-form="item" data-col="${col}" data-id="${id||""}">
-    ${dlgBar(id ? "編輯" : (isS ? "新增品項" : "新增 Self care 事項"))}
+  if (!isS){ pid = id ? pageOf(it) : (pid || pageFromTab(ui.tab)?.id || pages()[0]?.id); if (!pid) return toast("請先到 Settings 新增一個分頁"); }
+  dlg.innerHTML = `<form method="dialog" data-form="item" data-col="${col}" data-id="${id||""}" data-page="${esc(pid||"")}">
+    ${dlgBar(id ? "編輯" : (isS ? "新增品項" : `新增${esc(pageById(pid)?.name || "")}事項`))}
     <div class="dlg-body">
-      <div class="group">${fld("名稱", `<input id="d-name" name="name" type="text" required value="${esc(it.name)}" placeholder="${isS ? "例：卸妝油" : "例：洗牙"}">`)}
+      <div class="group">${fld("名稱", `<input id="d-name" name="name" type="text" required value="${esc(it.name)}" placeholder="${isS ? "例：卸妝油" : pid === "health" ? "例：洗牙" : "例：換機油、寵物打預防針"}">`)}
         ${isS ? fld("類別", `<select id="d-cat" name="cat">${supplyCats().map(c => `<option ${it.cat===c?"selected":""}>${esc(c)}</option>`).join("")}</select>`) : ""}</div>
       <div class="group">${fld(isS ? "上次購買" : "上次日期", `<input id="d-last" name="last" type="date" value="${it.last||""}">`)}
         ${fld(isS ? "可用天數" : "間隔天數", `<input id="d-cycle" name="cycle" type="number" min="1" required value="${it.cycle||""}">`)}
@@ -2053,7 +2117,7 @@ function openRestock(col, id){
         ${fld("花費", `<input id="r-price" name="price" type="number" min="0" value="${it.price||""}">`)}
         ${fld("分期期數", `<input id="r-inst" name="inst" type="number" min="1" max="60" value="${it.inst||1}">`)}
         ${fld("第一期月份", `<input id="r-start" name="start" type="month" value="${recordsFor(col, id, it.last).find(r => r.kind === "inst")?.p.start || ""}" placeholder="同完成月份">`)}
-        <label class="fld"><span>記入支出</span><span style="text-align:right"><input id="r-log" name="log" type="checkbox" checked> ${COL_SPEND_CAT[col]}</span></label></div>
+        <label class="fld"><span>記入支出</span><span style="text-align:right"><input id="r-log" name="log" type="checkbox" checked> ${esc(colCat(col, it))}</span></label></div>
     </div></form>`;
   if (!dlg.open) dlg.showModal();
 }
@@ -2134,7 +2198,7 @@ function openEvent(dateIso, idx){
   dlg.innerHTML = `<form method="dialog" data-form="evspend" data-d="${dateIso}">
     ${dlgBar("活動")}
     <div class="dlg-body">
-      <div class="group"><div class="fld" style="grid-template-columns:1fr auto"><span><b>${esc(e.text)}</b><br><span class="note">${WDF[d.getDay()]}, ${MONF[d.getMonth()]} ${d.getDate()}${e.time ? `・${esc(e.time)}` : ""}</span></span><span class="tag ${e.type === "gcal" ? "gray" : e.type}">${EV_LABEL[e.type]||""}</span></div>
+      <div class="group"><div class="fld" style="grid-template-columns:1fr auto"><span><b>${esc(e.text)}</b><br><span class="note">${WDF[d.getDay()]}, ${MONF[d.getMonth()]} ${d.getDate()}${e.time ? `・${esc(e.time)}` : ""}</span></span><span class="tag ${e.type === "gcal" ? "gray" : e.type}">${esc(e.label || EV_LABEL[e.type] || "")}</span></div>
         ${e.where ? `<div class="fld"><span>地點</span><span style="text-align:right">${esc(e.where)}</span></div>` : ""}
         ${e.link ? `<div class="fld"><span>Google 日曆</span><a href="${esc(e.link)}" target="_blank" rel="noopener" style="text-align:right;color:var(--accent)">開啟活動 ↗</a></div>` : ""}</div>
       ${(() => { const B = (act, label, extra = "", red) => `<button class="btn sm gray" type="button" data-act="${act}" data-d="${dateIso}" data-i="${idx}" ${extra}${red ? ' style="color:var(--red)"' : ""}>${label}</button>`;
@@ -2203,10 +2267,10 @@ function openCarry(ym){
 }
 function openPlanned(ym){
   const f = fin(ym);
-  const rows = f.planned.map(p => `<div class="fld" style="grid-template-columns:1fr auto auto;gap:8px"><span>${esc(p.it.name)}<br><span class="note">${p.overdue ? "已到期" : mdEn(p.date)}・${p.col === "supplies" ? "補貨" : "Self care"}${p.n >= 2 ? `・分期第 ${p.idx+1}/${p.n} 期` : ""}</span></span>
+  const rows = f.planned.map(p => `<div class="fld" style="grid-template-columns:1fr auto auto;gap:8px"><span>${esc(p.it.name)}<br><span class="note">${p.overdue ? "已到期" : mdEn(p.date)}・${esc(colName(p.col, p.it))}${p.n >= 2 ? `・分期第 ${p.idx+1}/${p.n} 期` : ""}</span></span>
     <span>${money(p.amount)}</span>
     <span class="pl-acts"><button type="button" data-act="plEdit" data-col="${p.col}" data-id="${p.it.id}" aria-label="編輯 ${esc(p.it.name)}">${PENCIL}</button><button type="button" class="del" data-act="plDel" data-col="${p.col}" data-id="${p.it.id}" data-ym="${ym}" aria-label="刪除 ${esc(p.it.name)}">${TRASH}</button></span></div>`).join("");
-  openList(`預計補貨／Self care・${ymZh(ym)}`, rows, f.plannedTotal);
+  openList(`預計補貨${pages().length ? "／" + careLabel() : ""}・${ymZh(ym)}`, rows, f.plannedTotal);
 }
 function openGroup(g, ym){
   const f = fin(ym), items = f.fixed.filter(x => (x.group||x.name) === g);
@@ -2231,7 +2295,7 @@ function openQuick(){
         <button type="button" class="fld" data-act="newBuy" style="border:0;background:none;text-align:left;cursor:pointer;grid-template-columns:1fr auto"><span>新增待買</span><span class="note">›</span></button>
         <button type="button" class="fld" data-act="newTask" style="border:0;background:none;text-align:left;cursor:pointer;grid-template-columns:1fr auto"><span>新增任務</span><span class="note">›</span></button>
         <button type="button" class="fld" data-act="newItem" data-col="supplies" style="border:0;background:none;text-align:left;cursor:pointer;grid-template-columns:1fr auto"><span>新增補貨品項</span><span class="note">›</span></button>
-        <button type="button" class="fld" data-act="newItem" data-col="health" style="border:0;background:none;text-align:left;cursor:pointer;grid-template-columns:1fr auto"><span>新增 Self care 事項</span><span class="note">›</span></button>
+        ${pages().map(pg => `<button type="button" class="fld" data-act="newItem" data-col="health" data-page="${esc(pg.id)}" style="border:0;background:none;text-align:left;cursor:pointer;grid-template-columns:1fr auto"><span>新增${esc(pg.name)}事項</span><span class="note">›</span></button>`).join("")}
       </div>
       <div class="sub-h" style="padding:0 4px">運動打卡（今天）</div>
       <div class="qgrid">${Object.entries(WORKOUT).map(([k,l]) => `<button type="button" class="btn" data-act="logWorkout" data-type="${k}" data-d="${iso(new Date())}" data-close="1">+ ${l}</button>`).join("")}</div>
@@ -2361,6 +2425,12 @@ app.addEventListener("change", e => {
   }
   if (el.dataset.sheet !== undefined && S.settings){ S.settings.sheetSyncOff = !el.checked; saveSettings(); if (el.checked) sheetSync(true); return; }
   if (el.dataset.gsync !== undefined && S.settings){ S.settings.gsyncOff = !el.checked; ui.openSettings = true; saveSettings(); if (el.checked) schedulePush(); return; }
+  if (el.dataset.pagename !== undefined && S.settings){
+    const ps = clone(pages()), i = Number(el.dataset.pagename), nv = el.value.trim(); if (!ps[i]) return;
+    if (!nv || nv === ps[i].name) { el.value = ps[i].name; return; }
+    if (ps.some((p, j) => j !== i && p.name === nv)) { el.value = ps[i].name; return toast("已經有這個分頁了"); }
+    ps[i].name = nv; S.settings.pages = ps; ui.openSettings = true; return saveSettings();
+  }
   if (el.dataset.cat !== undefined && S.settings){
     const i = Number(el.dataset.cat), cats = supplyCats().slice(), old = cats[i], nv = el.value.trim();
     if (!nv || nv === old) { el.value = old; return; }
@@ -2415,6 +2485,13 @@ app.addEventListener("submit", e => {
     const cats = spendCats().slice(); if (cats.includes(nv)) return toast("已經有這個類別了");
     cats.push(nv); S.settings.spendCats = cats; saveSettings(); return toast(`已新增類別：${nv}`);
   }
+  if (fm.dataset.form === "page"){
+    e.preventDefault();
+    const nv = String(new FormData(fm).get("name")||"").trim(); if (!nv || !S.settings) return;
+    const ps = pages().slice(); if (ps.some(p => p.name === nv)) return toast("已經有這個分頁了");
+    if (ps.length >= MAX_PAGES) return toast(`最多 ${MAX_PAGES} 個分頁`);
+    ps.push({id: uid(), name: nv}); S.settings.pages = ps; ui.openSettings = true; saveSettings(); return toast(`已新增分頁：${nv}`);
+  }
   if (fm.dataset.form === "cat"){
     e.preventDefault();
     const nv = String(new FormData(fm).get("name")||"").trim(); if (!nv) return;
@@ -2456,13 +2533,14 @@ dlg.addEventListener("submit", e => {
     const nx = d.get("next");
     if (nx && item.cycle){ const calc = item.last ? iso(addDays(parseISO(item.last), item.cycle)) : ""; if (nx !== calc){ item.last = iso(addDays(parseISO(nx), -item.cycle)); item.snooze = ""; } }
     if (col === "supplies") item.cat = d.get("cat");
+    else if (!id && fm.dataset.page && fm.dataset.page !== "health") item.page = fm.dataset.page;
     saveDoc(col, item);
   } else if (fm.dataset.form === "restock"){
     const it = S[col].find(x => x.id === id); if (!it) return;
     const date = d.get("date"), price = Number(d.get("price"))||0;
     const item = {...it, last: date, booked: "", bookedTime: "", bookedEnd: "", bookedWhere: "", snooze: ""}; if (price) item.price = price;
     const n = Math.max(1, Math.round(Number(d.get("inst"))||1)); item.inst = n;
-    const label = `${col==="supplies"?"補貨":"Self care"}：${it.name}`, src = `${col}:${id}:${date}`;
+    const label = `${colName(col, it)}：${it.name}`, src = `${col}:${id}:${date}`;
     const start = d.get("start") || String(date).slice(0,7);
     const prev = recordsFor(col, id, date), prevInst = prev.find(r => r.kind === "inst");
     // clear any earlier record of this same completion so pressing Done again never duplicates
@@ -2471,10 +2549,10 @@ dlg.addEventListener("submit", e => {
     if (d.get("log") && price){
       if (n >= 2){
         if (prevInst && prev.filter(r => r.kind === "inst").length > 1) prev.filter(r => r.kind === "inst").slice(1).forEach(r => removeDoc("installments", r.p.id));
-        return addInstallment({id: prevInst?.p.id, name: label, cat: COL_SPEND_CAT[col], total: price, n, start, date, src});
+        return addInstallment({id: prevInst?.p.id, name: label, cat: colCat(col, it), total: price, n, start, date, src});
       }
       if (prevInst) prev.filter(r => r.kind === "inst").forEach(r => removeDoc("installments", r.p.id));
-      addMonthItem("spend", {date, amount: price, cat: COL_SPEND_CAT[col], note: label, src});
+      addMonthItem("spend", {date, amount: price, cat: colCat(col, it), note: label, src});
     }
     toast(prev.length ? "已更新原本的記錄" : d.get("log") && price ? `已更新，記入 ${money(price)}` : "已更新");
   } else if (fm.dataset.form === "editspend"){
@@ -2630,6 +2708,12 @@ document.addEventListener("click", async e => {
     return toast(`已記錄：${WORKOUT[t]}${price ? `・記帳 ${money(price)}` : ""}`);
   }
   if (a === "delWorkout") return delMonthItem("workouts", b.dataset.ym, b.dataset.id);
+  if (a === "delPage"){
+    const ps = clone(pages()), [pg] = ps.splice(Number(b.dataset.i), 1); if (!pg) return;
+    const items = S.health.filter(x => pageOf(x) === pg.id), prev = S.settings.pages === undefined ? undefined : clone(S.settings.pages);
+    S.settings.pages = ps; items.forEach(x => removeDoc("health", x.id)); ui.openSettings = true; saveSettings();
+    return toast(`已刪除分頁「${pg.name}」${items.length ? `和 ${items.length} 個事項` : ""}`, () => { if (prev === undefined) delete S.settings.pages; else S.settings.pages = prev; saveSettings(); items.forEach(x => saveDoc("health", x)); });
+  }
   if (a === "delCat"){
     const cats = supplyCats().slice(), [c] = cats.splice(Number(b.dataset.i),1);
     if (!cats.length) return toast("至少要保留一個類別");
@@ -2639,7 +2723,7 @@ document.addEventListener("click", async e => {
   if (a === "spendCats"){ if (!S.settings) return toast("請先建立財務設定"); return openSpendCats(); }
   if (a === "delSpendCat"){ const cats = spendCats().slice(); cats.splice(Number(b.dataset.i),1); if (!cats.length) return toast("至少要保留一個類別"); return setSpendCats(cats); }
   if (a === "delInst") return removeDoc("installments", b.dataset.id);
-  if (a === "newItem") return openItem(b.dataset.col);
+  if (a === "newItem") return openItem(b.dataset.col, undefined, b.dataset.page);
   if (a === "editItem") return openItem(b.dataset.col, b.dataset.id);
   if (a === "restock" || a === "done") return openRestock(b.dataset.col, b.dataset.id);
   if (a === "book") return openBook(b.dataset.id);
@@ -2855,8 +2939,9 @@ function desiredEvents(){
     const first = nextOcc(t, from); if (!first) continue;
     out[`task:${t.id}`] = {summary: `${GPREFIX}${t.name}`, date: iso(first), rrule: rr, description: `${ruleText(t)}・來自 👾👾👾 生活管理`};
   }
-  for (const [col, lead, label] of [["health", leadHealth(), "Self care"], ["supplies", leadSupply(), "補貨"]]){
+  for (const [col, lead] of [["health", leadHealth()], ["supplies", leadSupply()]]){
     for (const it of S[col]){
+      const label = colName(col, it);
       const x = due(it, lead); if (!x.next || x.next > horizon) continue;
       const date = iso(x.next < t0 && !it.booked ? t0 : x.next);
       out[`${col}:${it.id}`] = {summary: `${GPREFIX}${label}：${it.name}${it.booked ? "（已預約）" : ""}`, date,
@@ -3061,20 +3146,20 @@ document.addEventListener("touchend", e => {
   if (!pOk) return; pOk = false;
   const t = e.changedTouches[0], dx = t.clientX - px, dy = t.clientY - py;
   if (Math.abs(dx) < 80 || Math.abs(dy) > Math.abs(dx) * 0.5) return;
-  const i = TABS.indexOf(ui.tab), j = i + (dx < 0 ? 1 : -1);
-  if (j < 0 || j >= TABS.length) return;
+  const T = tabs(), i = T.indexOf(ui.tab), j = i + (dx < 0 ? 1 : -1);
+  if (i < 0 || j < 0 || j >= T.length) return;
   document.body.dataset.slide = dx < 0 ? "left" : "right";
-  location.hash = "#" + TABS[j];
+  location.hash = "#" + T[j];
   setTimeout(() => delete document.body.dataset.slide, 260);
 }, {passive:true});
 
 /* ---------- routing ---------- */
-const TABS = ["home","tasks","supplies","finance","health","settings"];
+const tabs = () => ["home","tasks","supplies","finance", ...pages().map(pageKey), "settings"];
 let pendingQuick = null;
 function route(){
   const h = location.hash.replace("#","");
   if (h === "add" || h === "spend" || h === "buy" || h === "meal"){ pendingQuick = h; ui.tab = "home"; runQuick(); location.hash = "#home"; return; }
-  ui.tab = TABS.includes(h) ? h : "home"; render();
+  ui.tab = (tabs().includes(h) || h === "health" || h.startsWith("pg-")) ? h : "home"; render();
 }
 function runQuick(){ if (!pendingQuick) return; if (db && !S.settings) return setTimeout(runQuick, 300); const q = pendingQuick; pendingQuick = null; q === "spend" ? openQuickSpend() : q === "meal" ? openQuickSpend(mealCat()) : q === "buy" ? openBuy() : openQuick(); }
 window.addEventListener("hashchange", route);

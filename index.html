@@ -478,6 +478,220 @@ dialog form{display:grid;gap:14px;padding:0 0 16px}
 <button class="fab" id="fab" data-act="quick" aria-label="快速新增" title="快速新增">+</button>
 
 <script>
+/* ===== 👾 公版試算表：收支表、薪資明細、參數（樣式比照原本的「薪資與收支規劃」） =====
+   LIFE_BOOK(opts) 回傳建立試算表要用的 sheets 屬性、值（含公式）與格式。 */
+const LIFE_BOOK = (() => {
+  const FIXED_ROWS = 10, MONTHS = 12;
+  const ID = {main: 11, pay: 12, par: 13, log: 14, app: 15};
+  const rgb = h => ({red: +(parseInt(h.slice(1,3),16)/255).toFixed(3), green: +(parseInt(h.slice(3,5),16)/255).toFixed(3), blue: +(parseInt(h.slice(5,7),16)/255).toFixed(3)});
+  const C = {navy:"#1F3864", gray:"#595959", inBg:"#EAF1FB", inFg:"#1F4E9E", line:"#D9D9D9", dark:"#8C8C8C", ink:"#262626", total:"#F2F2F2",
+    inc:"#548235", incL:"#E2EFDA", fix:"#C55A11", fixL:"#FCE4D6", day:"#BF8F00", dayL:"#FFF2CC", sav:"#2E75B6", savL:"#DDEBF7", bal:"#7F6000", balL:"#FFE699", balBg:"#FFF9E6", purple:"#7030A0"};
+  const NUM = '#,##0;(#,##0);"-"';
+  const WD = "日一二三四五六";
+  const col = n => { let s = ""; n++; while (n){ const m = (n - 1) % 26; s = String.fromCharCode(65 + m) + s; n = Math.floor((n - 1) / 26); } return s; };
+  const ymAdd = (ym, k) => { const [y, m] = ym.split("-").map(Number), d = new Date(y, m - 1 + k, 1); return [d.getFullYear(), d.getMonth() + 1]; };
+  const ymLabel = ([y, m]) => `${y}/${String(m).padStart(2, "0")}`;
+
+  function build(o){
+    const start = o.startYm, months = [...Array(MONTHS)].map((_, i) => ymAdd(start, i));
+    const span = `${ymLabel(months[0])} – ${ymLabel(months[MONTHS - 1])}`;
+    const data = [], req = [];
+    const put = (sheet, a1, rows) => data.push({range: `'${sheet}'!${a1}`, values: rows});
+    const G = (sid, r0, r1, c0, c1) => ({sheetId: sid, startRowIndex: r0, endRowIndex: r1, startColumnIndex: c0, endColumnIndex: c1});
+    const fmt = (range, f) => {
+      const uf = {}, fields = ["textFormat", "horizontalAlignment", "verticalAlignment"];
+      const tf = {fontFamily: "Arial", fontSize: f.size || 10};
+      if (f.bold) tf.bold = true;
+      if (f.fg) tf.foregroundColor = rgb(f.fg);
+      uf.textFormat = tf;
+      if (f.bg){ uf.backgroundColor = rgb(f.bg); fields.push("backgroundColor"); }
+      if (f.num){ uf.numberFormat = f.num === "date" ? {type: "DATE", pattern: "yyyy/mm"} : f.num === "pct" ? {type: "PERCENT", pattern: "0.00%"} : f.num === "text" ? {type: "TEXT"} : {type: "NUMBER", pattern: f.num}; fields.push("numberFormat"); }
+      uf.horizontalAlignment = f.align || "CENTER"; uf.verticalAlignment = "MIDDLE";
+      if (f.wrap){ uf.wrapStrategy = "WRAP"; fields.push("wrapStrategy"); }
+      req.push({repeatCell: {range, cell: {userEnteredFormat: uf}, fields: fields.map(x => "userEnteredFormat." + x).join(",")}});
+    };
+    const border = (range, sides) => { const b = {range}; for (const [k, v] of Object.entries(sides)) b[k] = {style: v[0], color: rgb(v[1])}; req.push({updateBorders: b}); };
+    const merge = range => req.push({mergeCells: {range, mergeType: "MERGE_ALL"}});
+    const widths = (sid, list) => { for (let i = 0; i < list.length;){ let j = i + 1; while (j < list.length && list[j] === list[i]) j++; req.push({updateDimensionProperties: {range: {sheetId: sid, dimension: "COLUMNS", startIndex: i, endIndex: j}, properties: {pixelSize: list[i]}, fields: "pixelSize"}}); i = j; } };
+    const height = (sid, r0, r1, px) => req.push({updateDimensionProperties: {range: {sheetId: sid, dimension: "ROWS", startIndex: r0, endIndex: r1}, properties: {pixelSize: px}, fields: "pixelSize"}});
+    const title = (sid, text, note, lastCol) => {
+      fmt(G(sid, 0, 1, 0, lastCol), {size: 14, bold: true, fg: C.navy, align: "LEFT"}); fmt(G(sid, 1, 2, 0, lastCol), {size: 9, fg: C.gray, align: "LEFT"});
+      return [[text], [note]];
+    };
+    const section = (sid, r, c0, c1) => { fmt(G(sid, r, r + 1, c0, c1), {size: 11, bold: true, fg: C.navy}); border(G(sid, r, r + 1, c0, c1), {bottom: ["SOLID_MEDIUM", C.navy]}); };
+    const settingRows = (sid, r0, r1, labelC, valC, noteC, opt = {}) => {
+      fmt(G(sid, r0, r1, labelC, labelC + 1), {align: opt.labelAlign || "CENTER"});
+      fmt(G(sid, r0, r1, valC, valC + 1), {bg: C.inBg, fg: C.inFg, num: opt.num || "#,##0"});
+      if (noteC != null) fmt(G(sid, r0, r1, noteC, noteC + 1), {size: 9, fg: opt.noteInput ? C.inFg : C.gray, bg: opt.noteInput ? C.inBg : undefined});
+      border(G(sid, r0, r1, labelC, (noteC ?? valC) + 1), {bottom: ["SOLID", C.line], innerHorizontal: ["SOLID", C.line]});
+    };
+
+    /* ---------- 參數 ---------- */
+    const P = "參數", par = [];
+    par.push(...title(ID.par, "參數與對照表", "淺藍底為可修改的輸入值；改了之後「薪資明細」「收支表」會自動重算。2027 年費率或級距若調整，改這一頁就好。", 4));
+    par.push([], ["勞健保與薪資費率"], ["項目", "數值", "說明"]);
+    const rates = [["勞保費率", 0.125, "普通事故 11.5%＋就業保險 1%"], ["勞保 勞工負擔", 0.2, ""], ["勞保 雇主負擔", 0.7, ""], ["勞保投保薪資上限", 45800, "月薪超過仍以此計"],
+      ["職災保險費率", 0.0011, "依行業別，可看薪資單調整"], ["職災投保薪資上限", 72800, ""], ["工資墊償基金費率", 0.00025, ""], ["健保費率", 0.0517, ""], ["健保 勞工負擔", 0.3, ""], ["健保 雇主負擔", 0.6, ""],
+      ["健保 平均眷口數", 0.56, "雇主健保×(1+0.56)"], ["雇主提撥勞退", 0.06, ""], ["所得稅扣繳率", 0.05, "依公司規定；沒有預扣就填 0"], ["日薪基準天數", 30, "月薪÷30×在職天數"]];
+    par.push(...rates); // rows 6-19
+    par.push([], [], [], ["投保級距表（健保／勞退／職災共用；勞保另有上限）"], ["月薪下限（自動）", "投保金額"]); // rows 20-24
+    const levels = [29500,30300,31800,33300,34800,36300,38200,40100,42000,43900,45800,48200,50600,53000,55400,57800,60800,63800,66800,69800,72800,76500,80200,83900,87600,92100,96600,101100];
+    levels.forEach((v, i) => par.push([i === 0 ? 0 : `=B${24 + i}+1`, v])); // rows 25-52
+    par.push(["來源：115 年（2026）健保投保金額分級表；之後若調整請改 B 欄"]);
+    put(P, "A1", par);
+    widths(ID.par, [170, 100, 260, 40]);
+    height(ID.par, 0, 60, 22);
+    section(ID.par, 3, 0, 3);
+    fmt(G(ID.par, 4, 5, 0, 3), {bold: true, bg: C.total, fg: C.ink});
+    border(G(ID.par, 4, 5, 0, 3), {bottom: ["SOLID", C.dark]});
+    settingRows(ID.par, 5, 19, 0, 1, 2, {labelAlign: "LEFT"});
+    fmt(G(ID.par, 5, 18, 1, 2), {bg: C.inBg, fg: C.inFg, num: "pct"});
+    fmt(G(ID.par, 8, 9, 1, 2), {bg: C.inBg, fg: C.inFg, num: "#,##0"});
+    fmt(G(ID.par, 10, 11, 1, 2), {bg: C.inBg, fg: C.inFg, num: "#,##0"});
+    fmt(G(ID.par, 15, 16, 1, 2), {bg: C.inBg, fg: C.inFg, num: "0.00"});
+    fmt(G(ID.par, 18, 19, 1, 2), {bg: C.inBg, fg: C.inFg, num: "0"});
+    fmt(G(ID.par, 2, 3, 0, 3), {}); fmt(G(ID.par, 19, 22, 0, 3), {});
+    section(ID.par, 22, 0, 2);
+    fmt(G(ID.par, 23, 24, 0, 2), {bold: true, bg: C.total, fg: C.ink});
+    border(G(ID.par, 23, 24, 0, 2), {bottom: ["SOLID", C.dark]});
+    fmt(G(ID.par, 24, 52, 0, 1), {num: "#,##0", fg: C.gray});
+    fmt(G(ID.par, 24, 52, 1, 2), {num: "#,##0", bg: C.inBg, fg: C.inFg});
+    border(G(ID.par, 24, 52, 0, 2), {bottom: ["SOLID", C.line], innerHorizontal: ["SOLID", C.line]});
+    fmt(G(ID.par, 52, 53, 0, 3), {size: 9, fg: C.gray, align: "LEFT"});
+
+    /* ---------- 薪資明細 ---------- */
+    const S2 = "薪資明細", pay = [];
+    pay.push(...title(ID.pay, `薪資明細｜${span}`, "改淺藍底的「月薪、在職天數、實際發放月」，勞健保、所得稅、實領與雇主負擔都會自動重算。不想算這麼細，也可以直接在「收支表」填實領。", 15));
+    pay.push([], ["", "薪資", "", "員工端", "", "", "", "", "雇主端", "", "", "", "級距", "發放", "備註"]);
+    pay.push(["月份", "月薪", "在職\n天數", "應發薪資", "勞保", "健保", "所得稅", "實領金額", "雇主勞保", "雇主健保", "雇主勞退", "雇主負擔\n總額", "投保級距", "實際\n發放月", "備註"]);
+    const pr = r => `'參數'!$B$${r}`;
+    months.forEach(([y, m], i) => {
+      const r = 6 + i, d = `MIN($C${r},30)`;
+      pay.push([`=DATE(${y},${m},1)`, i === 0 && o.salary ? o.salary : "", 30,
+        `=IF($B${r}="",0,ROUND($B${r}/${pr(19)}*$C${r},0))`,
+        `=IF($B${r}="",0,ROUND(MIN($M${r},${pr(9)})*${pr(6)}*${pr(7)}/30*${d},0))`,
+        `=IF($B${r}="",0,ROUND($M${r}*${pr(13)}*${pr(14)},0))`,
+        `=ROUNDDOWN($D${r}*${pr(18)},0)`,
+        `=$D${r}-$E${r}-$F${r}-$G${r}`,
+        `=IF($B${r}="",0,ROUND(MIN($M${r},${pr(9)})*${pr(6)}*${pr(8)}/30*${d},0)+ROUND(MIN($M${r},${pr(11)})*${pr(10)}/30*${d},0)+ROUND(MIN($M${r},${pr(9)})*${pr(12)}/30*${d},0))`,
+        `=IF($B${r}="",0,ROUND($M${r}*${pr(13)}*${pr(15)}*(1+${pr(16)}),0))`,
+        `=IF($B${r}="",0,ROUND($M${r}*${pr(17)}/30*${d},0))`,
+        `=$D${r}+$I${r}+$J${r}+$K${r}`,
+        `=IF($B${r}="",0,INDEX('參數'!$B$25:$B$52,MATCH($B${r},'參數'!$A$25:$A$52,1)))`,
+        `=DATE(${y},${m},1)`, ""]);
+    });
+    const pEnd = 5 + MONTHS; // last data row
+    pay.push(["合計", "", "", ...["D","E","F","G","H","I","J","K","L"].map(c => `=SUM(${c}6:${c}${pEnd})`)]);
+    pay.push([], ["說明"],
+      ["• 月薪留空的月份不會計算；中途到職或離職，把「在職天數」改成實際天數（月薪÷30×天數）。"],
+      ["• 勞保、健保依「參數」頁的投保級距與費率計算，可能和薪資單差 1–2 元；所得稅依扣繳率預扣，報稅時多退少補。"],
+      ["• 「實際發放月」是薪水真正入帳的月份，收支表的實領會依這一欄加總。"]);
+    put(S2, "A1", pay);
+    widths(ID.pay, [90, 90, 60, 90, 70, 70, 70, 95, 80, 80, 80, 90, 85, 80, 160]);
+    height(ID.pay, 0, 3, 22); height(ID.pay, 3, 4, 26); height(ID.pay, 4, 5, 44); height(ID.pay, 5, pEnd + 1, 26);
+    const grp = [[0, 1, C.navy, C.total], [1, 3, C.navy, C.total], [3, 8, C.inc, C.incL], [8, 12, C.fix, C.fixL], [12, 13, C.sav, C.savL], [13, 14, C.bal, C.balL], [14, 15, C.dark, C.total]];
+    grp.forEach(([a, b, dark, light]) => { if (b - a > 1) merge(G(ID.pay, 3, 4, a, b)); fmt(G(ID.pay, 3, 4, a, b), {bold: true, bg: dark, fg: "#FFFFFF"}); fmt(G(ID.pay, 4, 5, a, b), {bold: true, bg: light, fg: C.ink, wrap: true}); });
+    border(G(ID.pay, 4, 5, 0, 15), {bottom: ["SOLID", C.dark]});
+    fmt(G(ID.pay, 5, pEnd, 0, 1), {num: "date"});
+    fmt(G(ID.pay, 5, pEnd, 1, 3), {num: "#,##0", bg: C.inBg, fg: C.inFg});
+    fmt(G(ID.pay, 5, pEnd, 3, 13), {num: NUM});
+    fmt(G(ID.pay, 5, pEnd, 7, 8), {num: NUM, bold: true, bg: C.balBg, fg: C.navy});
+    fmt(G(ID.pay, 5, pEnd, 13, 14), {num: "date", fg: C.purple, bg: C.inBg});
+    fmt(G(ID.pay, 5, pEnd, 14, 15), {size: 9, fg: C.gray, align: "LEFT"});
+    border(G(ID.pay, 5, pEnd, 0, 15), {bottom: ["SOLID", C.line], innerHorizontal: ["SOLID", C.line]});
+    fmt(G(ID.pay, pEnd, pEnd + 1, 0, 15), {num: NUM, bold: true, bg: C.total});
+    border(G(ID.pay, pEnd, pEnd + 1, 0, 15), {top: ["SOLID", C.dark], bottom: ["SOLID", C.line]});
+    fmt(G(ID.pay, pEnd + 2, pEnd + 3, 0, 1), {bold: true, fg: C.navy, align: "LEFT"});
+    fmt(G(ID.pay, pEnd + 3, pEnd + 6, 0, 1), {size: 9, fg: C.gray, align: "LEFT"});
+
+    /* ---------- 收支表 ---------- */
+    const M = "收支表", fixed = (o.fixed || []).slice(0, FIXED_ROWS);
+    const top = [];
+    top.push(...title(ID.main, `每月收支規劃｜${span}`, "分成收入、固定支出、日常花費、投資儲蓄四塊；淺藍底為可修改的輸入，App 會跟這份試算表互相同步。實領薪資自動連到「薪資明細」。", 18));
+    top.push([]);
+    top.push(["收入設定", "", "", "", "固定支出設定", "", "", "", "投資儲蓄設定"]);
+    const sv = o.savings || [3000, 3000, 0];
+    const fx = r => fixed[r] ? ["'" + fixed[r][0], fixed[r][1], fixed[r][2] || ""] : ["", "", ""];
+    top.push(["家教每堂收入", o.tutorRate || 0, "沒有家教填 0", "", "名稱", "金額", "計費星期", "", "緊急預備金／月", sv[0]]);
+    top.push(["家教上課星期", o.tutorDays || "", "例：三四", "", ...fx(0), "", "定期定額投資／月", sv[1]]);
+    top.push(["", "", "", "", ...fx(1), "", "其他儲蓄／月", sv[2], "例：出國基金"]);
+    top.push(["日常花費設定", "", "", "", ...fx(2)]);
+    top.push(["餐費每日", o.mealDaily || 0, "以當月天數計", "", ...fx(3)]);
+    for (let r = 4; r < FIXED_ROWS; r++) top.push(["", "", "", "", ...fx(r)]);
+    put(M, "A1", top); // rows 1-15
+    const tH = 18, tR0 = 20, tR1 = tR0 + MONTHS - 1, tTot = tR1 + 1;
+    const tbl = [];
+    tbl.push(["", "收入", "", "", "", "", "", "固定支出", "", "", "日常花費", "", "投資儲蓄", "", "", "", "結餘", "", "", "本月星期天數（自動）"]);
+    tbl.push(["月份", "實領薪資\n（依發放月）", "年終\n實領", "家教\n堂數", "停課\n堂數", "家教\n收入", "收入\n小計", "每月\n固定", "依天\n計費", "固定支出\n小計", "餐費", "日常花費\n小計",
+      "緊急\n預備金", "定期定額\n投資", "其他\n儲蓄", "投資儲蓄\n小計", "可用金額\n（收入−固定−日常）", "可自由\n花用", "", ...WD]);
+    const fr = `$E$6:$E$${5 + FIXED_ROWS}`, fa = `$F$6:$F$${5 + FIXED_ROWS}`, fg = `$G$6:$G$${5 + FIXED_ROWS}`;
+    months.forEach(([y, m], i) => {
+      const r = tR0 + i;
+      const cnt = WD.split("").map((w, k) => `${col(19 + k)}${r}`);
+      const days = (txt) => WD.split("").map((w, k) => `ISNUMBER(FIND("${w}",${txt}))*${cnt[k]}`).join("+");
+      tbl.push([`=DATE(${y},${m},1)`,
+        `=SUMPRODUCT((YEAR('薪資明細'!$N$6:$N$${pEnd})=YEAR($A${r}))*(MONTH('薪資明細'!$N$6:$N$${pEnd})=MONTH($A${r}))*'薪資明細'!$H$6:$H$${pEnd})`,
+        "", `=${days("$B$6")}`, 0, `=MAX(0,$D${r}-$E${r})*$B$5`, `=$B${r}+$C${r}+$F${r}`,
+        `=SUMPRODUCT((${fr}<>"")*(${fg}="")*${fa})`,
+        `=SUMPRODUCT((${fr}<>"")*(${fg}<>"")*${fa}*(${days(fg)}))`,
+        `=$H${r}+$I${r}`, `=$B$9*DAY(EOMONTH($A${r},0))`, `=$K${r}`,
+        "=$J$5", "=$J$6", "=$J$7", `=SUM(M${r}:O${r})`, `=$G${r}-$J${r}-$L${r}`, `=$Q${r}-$P${r}`, "",
+        ...WD.split("").map((w, k) => `=INT((WEEKDAY($A${r}-${k + 1})+EOMONTH($A${r},0)-$A${r})/7)`)]);
+    });
+    const sumCols = "BCDEFGHIJKLMNOPQR".split("");
+    tbl.push(["合計", ...sumCols.map(c => `=SUM(${c}${tR0}:${c}${tR1})`)]);
+    tbl.push(["月平均", ...sumCols.map(c => ["C", "D", "E", "M", "N", "O"].includes(c) ? "" : `=ROUND(AVERAGE(${c}${tR0}:${c}${tR1}),0)`)]);
+    tbl.push([], ["說明"],
+      ["• 淺藍底是可以改的格子，其他會自動計算。App 和這份試算表會互相同步：在這裡改收入、固定支出、餐費、儲蓄，App 會跟著調整；在 App 裡改，也會寫回這裡。"],
+      ["• 固定支出：每月固定的項目「計費星期」留空；交通這種每天計費的，金額填每天的金額，「計費星期」填星期幾（例：一二五），會自動算出每個月有幾天。"],
+      ["• 實領薪資依「薪資明細」的實際發放月加總；不想算勞健保，也可以直接在這一欄填實領金額。"],
+      ["• 家教收入＝（家教堂數−停課堂數）×每堂收入，堂數依「家教上課星期」自動計算；遇到停課，填在那個月的「停課堂數」。"],
+      ["• 投資儲蓄每個月預設等於上方設定的金額；某個月想調整，直接改那個月的格子。"],
+      ["• 可用金額＝收入−固定支出−日常花費；可自由花用＝可用金額−投資儲蓄。"]);
+    put(M, `A${tH}`, tbl);
+    widths(ID.main, [110, 90, 70, 55, 140, 75, 80, 75, 80, 80, 130, 80, 70, 75, 70, 80, 110, 80, 20, 34, 34, 34, 34, 34, 34, 34]);
+    height(ID.main, 0, 16, 22); height(ID.main, tH - 1, tH, 28); height(ID.main, tH, tH + 1, 48); height(ID.main, tR0 - 1, tTot + 1, 26);
+    section(ID.main, 3, 0, 3); section(ID.main, 3, 4, 7); section(ID.main, 3, 8, 11); section(ID.main, 7, 0, 3);
+    settingRows(ID.main, 4, 5, 0, 1, 2);
+    settingRows(ID.main, 5, 6, 0, 1, 2);
+    fmt(G(ID.main, 5, 6, 1, 2), {bg: C.inBg, fg: C.inFg, num: "text"});
+    settingRows(ID.main, 8, 9, 0, 1, 2);
+    fmt(G(ID.main, 4, 5, 4, 7), {bold: true, bg: C.total, fg: C.ink});
+    border(G(ID.main, 4, 5, 4, 7), {bottom: ["SOLID", C.dark]});
+    fmt(G(ID.main, 5, 5 + FIXED_ROWS, 4, 5), {bg: C.inBg, fg: C.inFg, num: "text"});
+    fmt(G(ID.main, 5, 5 + FIXED_ROWS, 5, 6), {bg: C.inBg, fg: C.inFg, num: "#,##0"});
+    fmt(G(ID.main, 5, 5 + FIXED_ROWS, 6, 7), {bg: C.inBg, fg: C.inFg, num: "text"});
+    border(G(ID.main, 5, 5 + FIXED_ROWS, 4, 7), {bottom: ["SOLID", C.line], innerHorizontal: ["SOLID", C.line]});
+    settingRows(ID.main, 4, 7, 8, 9, 10);
+    const g2 = [[0, 1, C.navy, C.total], [1, 7, C.inc, C.incL], [7, 10, C.fix, C.fixL], [10, 12, C.day, C.dayL], [12, 16, C.sav, C.savL], [16, 18, C.bal, C.balL], [19, 26, C.dark, C.total]];
+    g2.forEach(([a, b, dark, light]) => { if (b - a > 1) merge(G(ID.main, tH - 1, tH, a, b)); fmt(G(ID.main, tH - 1, tH, a, b), {bold: true, bg: dark, fg: "#FFFFFF", wrap: b - a === 1}); fmt(G(ID.main, tH, tH + 1, a, b), {bold: true, bg: light, fg: C.ink, wrap: true}); });
+    fmt(G(ID.main, tH - 1, tH, 19, 26), {bold: true, bg: C.dark, fg: "#FFFFFF", size: 9});
+    border(G(ID.main, tH, tH + 1, 0, 26), {bottom: ["SOLID", C.dark]});
+    fmt(G(ID.main, tR0 - 1, tR1, 0, 1), {num: "date"});
+    fmt(G(ID.main, tR0 - 1, tR1, 1, 18), {num: NUM});
+    for (const c of [2, 4, 12, 13, 14]) fmt(G(ID.main, tR0 - 1, tR1, c, c + 1), {num: NUM, bg: C.inBg, fg: C.inFg});
+    fmt(G(ID.main, tR0 - 1, tR1, 16, 18), {num: NUM, bold: true, bg: C.balBg, fg: C.navy});
+    fmt(G(ID.main, tR0 - 1, tR1, 19, 26), {num: "0", size: 9, fg: C.gray});
+    border(G(ID.main, tR0 - 1, tR1, 0, 18), {bottom: ["SOLID", C.line], innerHorizontal: ["SOLID", C.line]});
+    fmt(G(ID.main, tR1, tR1 + 2, 0, 18), {num: NUM, bold: true, bg: C.total});
+    border(G(ID.main, tR1, tR1 + 1, 0, 18), {top: ["SOLID", C.dark]});
+    border(G(ID.main, tR1, tR1 + 2, 0, 18), {bottom: ["SOLID", C.line], innerHorizontal: ["SOLID", C.line]});
+    fmt(G(ID.main, tTot + 2, tTot + 3, 0, 1), {bold: true, fg: C.navy, align: "LEFT"});
+    fmt(G(ID.main, tTot + 3, tTot + 9, 0, 1), {size: 9, fg: C.gray, align: "LEFT"});
+    req.push({addDimensionGroup: {range: {sheetId: ID.main, dimension: "COLUMNS", startIndex: 18, endIndex: 26}}});
+    req.push({updateDimensionGroup: {dimensionGroup: {range: {sheetId: ID.main, dimension: "COLUMNS", startIndex: 18, endIndex: 26}, depth: 1, collapsed: true}, fields: "collapsed"}});
+
+    const sheets = [
+      {properties: {sheetId: ID.main, title: M, index: 0, gridProperties: {rowCount: 200, columnCount: 26, frozenRowCount: tH + 1, frozenColumnCount: 1, hideGridlines: true}, tabColorStyle: {rgbColor: rgb(C.inc)}}},
+      {properties: {sheetId: ID.pay, title: S2, index: 1, gridProperties: {rowCount: 200, columnCount: 26, frozenRowCount: 5, frozenColumnCount: 1, hideGridlines: true}, tabColorStyle: {rgbColor: rgb(C.navy)}}},
+      {properties: {sheetId: ID.par, title: P, index: 2, gridProperties: {rowCount: 200, columnCount: 26, hideGridlines: true}, tabColorStyle: {rgbColor: rgb("#7F7F7F")}}},
+      {properties: {sheetId: ID.log, title: "支出紀錄", index: 3}},
+      {properties: {sheetId: ID.app, title: "_app", index: 4, hidden: true}}];
+    return {sheets, data, requests: req};
+  }
+  return {build, FIXED_ROWS, WD};
+})();
+
 /* ===== 👾 獨立版執行環境：Google 登入、試算表存資料、Google 日曆 =====
    這段取代原本 Claude 提供的 db 與 mcp，讓 app 可以直接放在任何網站上使用。 */
 const GOOGLE_CLIENT_ID = "121940128769-cks1mevog6e7i2pc911bak545gisgkmg.apps.googleusercontent.com";
@@ -570,11 +784,27 @@ const LIFE_SCOPES = "openid email profile https://www.googleapis.com/auth/drive.
       for (const [p, v] of store) if (p.startsWith("spend/")) for (const x of v.items || []) spend.push([x.date, Number(x.amount) || 0, x.cat || "", x.note || "", x.pay === "cash" ? "現金" : "刷卡"]);
       spend.sort((a, b) => b[0].localeCompare(a[0]));
       await api(`${SHEETS}/${id}/values/${rng("支出紀錄!A1")}?valueInputOption=RAW`, {method: "PUT", body: JSON.stringify({values: [["日期", "金額", "類別", "備註", "付款"], ...spend]})});
+      await writeBack(id).catch(() => {});
       dirty = false; persistLocal(); syncLabel("已同步");
     } catch (e) { syncLabel(e?.code === "needs_reauth" ? "尚未存到 Google（請重新連線）" : "儲存失敗，稍後會再試"); if (e?.code !== "needs_reauth") scheduleSave(); }
     saving = false;
     if (dirty) scheduleSave();
   }
+  /* App 的設定寫回試算表「收支表」上方的輸入格（只有公版試算表才會） */
+  const WDS = "日一二三四五六";
+  async function writeBack(id){
+    const st = store.get("life/settings"); if (!st || st.sheetLayout !== 2 || typeof LIFE_BOOK === "undefined") return;
+    const N = LIFE_BOOK.FIXED_ROWS, days = a => (a || []).slice().sort().map(w => WDS[w]).join("");
+    const fx = (st.fixed || []).filter(it => it.name).slice(0, N).map(it => ["'" + it.name, Number(it.amount) || 0, it.kind === "weekday" ? days(it.weekdays) : ""]);
+    while (fx.length < N) fx.push(["", "", ""]);
+    const sv = k => { const x = (st.savings || []).find(v => v.id === k); return x ? Number(x.amount) || 0 : ""; };
+    const data = [{range: "收支表!B5:B6", values: [[Number(st.tutor?.rate) || 0], [days(st.tutor?.weekdays)]]}, {range: "收支表!B9", values: [[Number(st.meal?.daily) || 0]]},
+      {range: `收支表!E6:G${5 + N}`, values: fx}, {range: "收支表!J5:J7", values: [[sv("emg")], [sv("inv")], [sv("abroad")]]}];
+    const sig = JSON.stringify(data); if (sig === lsGet("backsig:" + id, null)) return;
+    await api(`${SHEETS}/${id}/values:batchUpdate`, {method: "POST", body: JSON.stringify({valueInputOption: "USER_ENTERED", data})});
+    lsSet("backsig:" + id, sig);
+  }
+  const idle = async () => { for (let i = 0; i < 40 && (dirty || saving); i++) await new Promise(r => setTimeout(r, 250)); };
   async function pull(){
     if (!profile?.sheetId || !valid() || dirty || saving) return;
     try {
@@ -614,9 +844,10 @@ const LIFE_SCOPES = "openid email profile https://www.googleapis.com/auth/drive.
     async delete_event(i){ await api(evUrl(i.calendarId, i.eventId), {method: "DELETE"}); return {}; },
     async list_calendars(){ return {calendars: profile?.calId ? [{id: profile.calId, summary: profile.calName || "👾生活"}] : []}; },
     async read_file_content({fileId}){
+      await idle();
       const j = await api(`${SHEETS}/${fileId}/values/${rng("收支表!A1:Z200")}`);
       const rows = j.values || [];
-      return {fileContent: "### Sheet Name: 收支表\n" + rows.map(r => "| " + r.map(c => String(c).replace(/\|/g, "/")).join(" | ") + " |").join("\n") + "\n### Table Columns\n"};
+      return {fileContent: "### Sheet Name: 收支表\n" + rows.map(r => "| " + (r || []).map(c => String(c ?? "").replace(/\|/g, "/").replace(/\s*\n\s*/g, " ")).join(" | ") + " |").join("\n") + "\n### Table Columns\n"};
     }
   };
   const watchers = new Set();
@@ -624,7 +855,7 @@ const LIFE_SCOPES = "openid email profile https://www.googleapis.com/auth/drive.
     async callTool(server, tool, input = {}){ if (!TOOLS[tool]) throw {code: "not_in_manifest"}; return {payload: await TOOLS[tool](input)}; },
     watchTool(server, tool, input, handler, opts = {}){
       const key = "cache:" + tool + ":" + JSON.stringify(input), w = {tool};
-      const cached = lsGet(key, null); if (cached) setTimeout(() => handler({type: "data", result: {payload: cached.p}, cache: {storedAt: cached.t}}), 0);
+      const cached = tool === "read_file_content" ? null : lsGet(key, null); if (cached) setTimeout(() => handler({type: "data", result: {payload: cached.p}, cache: {storedAt: cached.t}}), 0);
       w.run = async () => { try { const p = await TOOLS[tool](input); lsSet(key, {p, t: Date.now()}); handler({type: "data", result: {payload: p}}); } catch (e) { if (!cached || e?.code !== "needs_reauth") handler({type: "error", error: e}); } };
       watchers.add(w); w.run(); const iv = opts.refetchInterval ? setInterval(w.run, opts.refetchInterval) : null;
       return () => { watchers.delete(w); if (iv) clearInterval(iv); };
@@ -668,26 +899,29 @@ const LIFE_SCOPES = "openid email profile https://www.googleapis.com/auth/drive.
     const put = (p, v) => store.set(p, v);
     put("life/settings", {name, appName, email, startMonth: ym, sheetId, gcalTarget: calId, gcalTargetName: "👾" + appName, gcalShow: [calId], pages: [],
       tutor: {rate: 0, weekdays: [], perDay: 1, skip: {}}, salary: {}, bonus: {},
-      fixed: [{id: rid(), name: "手機費（範例）", group: "電話", kind: "monthly", amount: 499},
-              {id: rid(), name: "捷運（範例）", group: "交通", kind: "weekday", amount: 60, weekdays: [1, 2, 3, 4, 5]},
-              {id: rid(), name: "串流訂閱（範例）", kind: "monthly", amount: 270, noList: true}],
-      fx: {usd: 32, fee: 0.015}, savings: [{id: "emg", name: "緊急預備金", amount: 3000}, {id: "inv", name: "定期定額投資", amount: 3000}, {id: "abroad", name: "其他儲蓄", amount: 0}],
-      goals: {gymPerWeek: 2, racketDays: 14}, leadSupply: 7, leadHealth: 14, meal: {daily: 250, cat: "餐飲"}, payday: 5, workoutPrice: {tennis: 0, pilates: 0}});
+      fixed: SEED_FIXED.map(f => ({id: rid(), ...f})), sheetLayout: 2, sheetFixedNames: SEED_FIXED.map(f => f.name),
+      fx: {usd: 32, fee: 0.015}, savings: [{id: "emg", name: "緊急預備金", amount: SEED_SAVINGS[0]}, {id: "inv", name: "定期定額投資", amount: SEED_SAVINGS[1]}, {id: "abroad", name: "其他儲蓄", amount: SEED_SAVINGS[2]}],
+      goals: {gymPerWeek: 2, racketDays: 14}, leadSupply: 7, leadHealth: 14, meal: {daily: SEED_MEAL, cat: "餐飲"}, payday: 5, workoutPrice: {tennis: 0, pilates: 0}});
     put("supplies/" + rid(), {name: "洗髮精（範例）", cat: "洗沐用品", cycle: 45, price: 299, inst: 1, last: dayIso(-40), note: "可以刪掉，換成你自己的"});
     put("supplies/" + rid(), {name: "衛生紙（範例）", cat: "日用品", cycle: 30, price: 199, inst: 1, last: dayIso(-10), note: ""});
     put("tasks/" + rid(), {name: "洗衣服（範例）", rule: {type: "weekly", weekdays: [6]}, note: "", since: dayIso(0)});
     put("tasks/" + rid(), {name: "倒垃圾（範例）", rule: {type: "weekly", weekdays: [1, 4]}, note: "", since: dayIso(0)});
     put("shopping/" + rid(), {name: "洗碗精（範例）", qty: 1, price: 89, cat: "日用品", done: false, created: new Date().toISOString(), note: ""});
   }
+  const SEED_FIXED = [{name: "手機費（範例）", group: "電話", kind: "monthly", amount: 499}, {name: "捷運（範例）", group: "交通", kind: "weekday", amount: 60, weekdays: [1, 2, 3, 4, 5]},
+    {name: "串流訂閱（範例）", kind: "monthly", amount: 270, noList: true}];
+  const SEED_SAVINGS = [3000, 3000, 0], SEED_MEAL = 250;
   async function createSheet(appName){
-    const ss = await api(SHEETS, {method: "POST", body: JSON.stringify({properties: {title: `👾 ${appName}`, locale: "zh_TW", timeZone: tz},
-      sheets: [{properties: {title: "收支表"}}, {properties: {title: "支出紀錄"}}, {properties: {title: "_app", hidden: true}}]})});
+    const book = LIFE_BOOK.build({startYm: ymNow(), fixed: SEED_FIXED.map(f => [f.name, f.amount, f.kind === "weekday" ? f.weekdays.map(w => "日一二三四五六"[w]).join("") : ""]),
+      savings: SEED_SAVINGS, mealDaily: SEED_MEAL, tutorRate: 0, tutorDays: ""});
+    const ss = await api(SHEETS, {method: "POST", body: JSON.stringify({properties: {title: `👾 ${appName}`, locale: "zh_TW", timeZone: tz}, sheets: book.sheets})});
     const id = ss.spreadsheetId;
-    await api(`${DRIVE}/${id}`, {method: "PATCH", body: JSON.stringify({appProperties: {lifeapp: "1"}})});
-    const ym = ymNow(), rows = [["👾 收支表"], ["每個月的實領薪資、年終、儲蓄有變動時填在這裡，app 會自動同步。空白的格子會照 app 裡的設定。"], [],
-      ["月份", "實領薪資", "年終", "停課堂數", "緊急預備金", "定期定額投資", "其他儲蓄"]];
-    for (let i = 0; i < 12; i++) rows.push(["'" + ymPlus(ym, i).replace("-", "/"), "", "", "", "", "", ""]);
-    await api(`${SHEETS}/${id}/values/${rng("收支表!A1")}?valueInputOption=USER_ENTERED`, {method: "PUT", body: JSON.stringify({values: rows})});
+    await api(`${DRIVE}/${id}`, {method: "PATCH", body: JSON.stringify({appProperties: {lifeapp: "1"}})}).catch(() => {});
+    await api(`${SHEETS}/${id}/values:batchUpdate`, {method: "POST", body: JSON.stringify({valueInputOption: "USER_ENTERED", data: book.data})});
+    for (const sid of [13, 12, 11]){ // 格式失敗也不影響使用
+      const part = book.requests.filter(r => JSON.stringify(r).includes(`"sheetId":${sid},`));
+      if (part.length) await api(`${SHEETS}/${id}:batchUpdate`, {method: "POST", body: JSON.stringify({requests: part})}).catch(() => {});
+    }
     return id;
   }
   async function findSheets(){
@@ -1760,7 +1994,7 @@ function guideSec(){
     <p style="margin:0 0 8px"><b>發薪日和信用卡</b>：在下面的 Goals & Reminders 改成自己的發薪日、信用卡結帳日和繳款截止日；沒有用信用卡的話，把「有用信用卡」關掉就好。</p>
     <p style="margin:0 0 8px"><b>記帳</b>：右下角「＋」可以記一筆支出、記餐費、加入待買。清單裡已經預扣的東西打勾就好。</p>
     <p style="margin:0 0 8px"><b>自訂分頁</b>：在下面的 Custom Pages 新增像「Self care」「寵物」「汽車保養」的分頁，放定期要做的事，設定多久一次和金額，到期前會提醒、可以記預約時間。</p>
-    <p style="margin:0 0 8px"><b>Google 試算表</b>：上面「開啟試算表」可以看到你的資料，「支出紀錄」分頁是每一筆花費，「收支表」分頁可以填每月薪資和儲蓄。</p>
+    <p style="margin:0 0 8px"><b>Google 試算表</b>：上面「開啟試算表」可以打開。「收支表」可以改收入、固定支出、餐費和儲蓄，App 會跟著調整，在 App 改也會寫回去；「薪資明細」可以算勞健保和實領；「支出紀錄」是每一筆花費。</p>
     <p style="margin:0 0 8px"><b>Google 日曆</b>：任務、補貨、預約和新增的行程會寫進 App 自己建立的日曆，手機的日曆 App 也看得到。</p>
     <p style="margin:0"><b>手機桌面</b>：iPhone 用 Safari 開，按分享 →「加入主畫面」；Android 用 Chrome 選「安裝應用程式」。</p>
   </div></details>`;
@@ -2870,7 +3104,7 @@ function parseSheet(text){
   const col = (re, def) => { const i = head.findIndex(c => re.test(c.replace(/\s+/g, ""))); return i >= 0 ? i : def; };
   const C = {sal: col(/實領/, 1), bonus: col(/^年終/, 2), skip: col(/^停課/, 4), emg: col(/^緊急/, 13), inv: col(/^定期定額/, 14), abroad: col(/^其他儲蓄/, 15)};
   for (const r of rows){
-    const m = (r[0]||"").match(/^(\d{4})\/(\d{1,2})$/); if (!m || r.length < 2) continue;
+    const m = (r[0]||"").match(/^(\d{4})\/(\d{1,2})(?:\/\d{1,2})?$/); if (!m || r.length < 2) continue;
     const ym = `${m[1]}-${pad(Number(m[2]))}`;
     out.salary[ym] = num(r[C.sal]); out.bonus[ym] = num(r[C.bonus]); out.skip[ym] = num(r[C.skip]); out.months++;
     { const sv = {emg: num(r[C.emg]), inv: num(r[C.inv]), abroad: num(r[C.abroad])}; if (sv.emg != null || sv.inv != null || sv.abroad != null) out.savings[ym] = sv; }
@@ -2882,6 +3116,17 @@ function parseSheet(text){
   out.fx = {usd: find(/^美元匯率/), fee: find(/^海外刷卡手續費/)};
   out.mealDaily = find(/^餐費每日/);
   out.saveBase = {emg: find(/^緊急預備金／月/), inv: find(/^定期定額投資／月/), abroad: find(/^其他儲蓄／月/)};
+  { const hit = rows.find(r => r[0] === "家教上課星期"); out.tutorDays = hit ? String(hit[1] || "") : null; }
+  // 公版試算表的固定支出清單：「固定支出設定」下面一列是「名稱｜金額｜計費星期」
+  for (let i = 0; i + 1 < rows.length; i++){
+    const ci = rows[i].indexOf("固定支出設定"); if (ci < 0 || rows[i+1][ci] !== "名稱" || rows[i+1][ci+1] !== "金額") continue;
+    out.fixedRows = [];
+    for (let k = i + 2; k < rows.length && k < i + 2 + 12; k++){
+      const r = rows[k], name = String(r[ci] || "").trim(); if (/^(月份|收入)$/.test(name)) break;
+      if (name) out.fixedRows.push({name, amount: num(r[ci+1]) ?? 0, days: String(r[ci+2] || "")});
+    }
+    break;
+  }
   return out;
 }
 function applySheet(d){
@@ -2901,6 +3146,25 @@ function applySheet(d){
   for (const sv of st.savings || []) if (d.saveBase?.[sv.id] != null) set(sv, "amount", d.saveBase[sv.id]);
   { const ns = {}; for (const [ym, sv] of Object.entries(d.savings || {})){ const o = {}; for (const [k, v] of Object.entries(sv)) if (v != null) o[k] = v; if (Object.keys(o).length) ns[ym] = o; }
     if (JSON.stringify(st.savingsSheet || {}) !== JSON.stringify(ns)){ st.savingsSheet = ns; n++; } }
+  const wdOf = t => [...new Set([...String(t || "")].map(ch => "日一二三四五六".indexOf(ch)).filter(w => w >= 0))].sort();
+  if (d.tutorDays != null){ const w = wdOf(d.tutorDays); if (JSON.stringify(w) !== JSON.stringify(st.tutor.weekdays || [])){ st.tutor.weekdays = w; n++; } }
+  if (d.fixedRows){
+    st.fixed ||= [];
+    const prev = new Set(st.sheetFixedNames || []), seen = [];
+    for (const r of d.fixedRows){
+      seen.push(r.name);
+      const wd = wdOf(r.days);
+      let it = st.fixed.find(x => x.name === r.name);
+      if (!it){ st.fixed.push({id: uid(), name: r.name, kind: wd.length ? "weekday" : "monthly", amount: r.amount, ...(wd.length ? {weekdays: wd} : {})}); n++; continue; }
+      set(it, "amount", r.amount);
+      if (it.kind === "usd") continue;
+      if (wd.length){ if (it.kind !== "weekday"){ it.kind = "weekday"; n++; } if (JSON.stringify(it.weekdays || []) !== JSON.stringify(wd)){ it.weekdays = wd; n++; } }
+      else if (it.kind === "weekday"){ it.kind = "monthly"; delete it.weekdays; n++; }
+    }
+    const keep = st.fixed.filter(x => !(prev.has(x.name) && !seen.includes(x.name)));
+    if (keep.length !== st.fixed.length){ st.fixed = keep; n++; }
+    if (JSON.stringify(seen) !== JSON.stringify(st.sheetFixedNames || [])){ st.sheetFixedNames = seen; n++; }
+  }
   if (n){ S.settings = st; saveSettings(); }
   return n;
 }

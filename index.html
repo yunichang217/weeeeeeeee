@@ -481,7 +481,7 @@ dialog form{display:grid;gap:14px;padding:0 0 16px}
 /* ===== 👾 公版試算表：收支表、薪資明細、參數（樣式比照原本的「薪資與收支規劃」） =====
    LIFE_BOOK(opts) 回傳建立試算表要用的 sheets 屬性、值（含公式）與格式。 */
 const LIFE_BOOK = (() => {
-  const FIXED_ROWS = 10, MONTHS = 12;
+  const FIXED_ROWS = 10, INCOME_ROWS = 5, MONTHS = 12;
   const ID = {main: 11, pay: 12, par: 13, log: 14, app: 15};
   const rgb = h => ({red: +(parseInt(h.slice(1,3),16)/255).toFixed(3), green: +(parseInt(h.slice(3,5),16)/255).toFixed(3), blue: +(parseInt(h.slice(5,7),16)/255).toFixed(3)});
   const C = {navy:"#1F3864", gray:"#595959", inBg:"#EAF1FB", inFg:"#1F4E9E", line:"#D9D9D9", dark:"#8C8C8C", ink:"#262626", total:"#F2F2F2",
@@ -605,81 +605,87 @@ const LIFE_BOOK = (() => {
     fmt(G(ID.pay, pEnd + 3, pEnd + 6, 0, 1), {size: 9, fg: C.gray, align: "LEFT"});
 
     /* ---------- 收支表 ---------- */
-    const M = "收支表", fixed = (o.fixed || []).slice(0, FIXED_ROWS);
+    const M = "收支表", fixed = (o.fixed || []).slice(0, FIXED_ROWS), incs = (o.incomes || []).slice(0, INCOME_ROWS);
     const top = [];
-    top.push(...title(ID.main, `每月收支規劃｜${span}`, "分成收入、固定支出、日常花費、投資儲蓄四塊；淺藍底為可修改的輸入，App 會跟這份試算表互相同步。實領薪資自動連到「薪資明細」。", 18));
+    top.push(...title(ID.main, `每月收支規劃｜${span}`, "分成收入、固定支出、日常花費、投資儲蓄四塊；淺藍底為可修改的輸入，App 會跟這份試算表互相同步。實領薪資自動連到「薪資明細」。", 17));
     top.push([]);
     top.push(["收入設定", "", "", "", "固定支出設定", "", "", "", "投資儲蓄設定"]);
     const sv = o.savings || [3000, 3000, 0];
-    const fx = r => fixed[r] ? ["'" + fixed[r][0], fixed[r][1], fixed[r][2] || ""] : ["", "", ""];
-    top.push(["家教每堂收入", o.tutorRate || 0, "沒有家教填 0", "", "名稱", "金額", "計費星期", "", "緊急預備金／月", sv[0]]);
-    top.push(["家教上課星期", o.tutorDays || "", "例：三四", "", ...fx(0), "", "定期定額投資／月", sv[1]]);
-    top.push(["", "", "", "", ...fx(1), "", "其他儲蓄／月", sv[2], "例：出國基金"]);
-    top.push(["日常花費設定", "", "", "", ...fx(2)]);
-    top.push(["餐費每日", o.mealDaily || 0, "以當月天數計", "", ...fx(3)]);
-    for (let r = 4; r < FIXED_ROWS; r++) top.push(["", "", "", "", ...fx(r)]);
+    const row3 = (list, r) => list[r] ? ["'" + list[r][0], list[r][1], list[r][2] || ""] : ["", "", ""];
+    const iRow = r => r < INCOME_ROWS ? row3(incs, r) : ["", "", ""];
+    top.push(["名稱", "金額", "計算星期", "", "名稱", "金額", "計費星期", "", "緊急預備金／月", sv[0]]);
+    top.push([...iRow(0), "", ...row3(fixed, 0), "", "定期定額投資／月", sv[1]]);
+    top.push([...iRow(1), "", ...row3(fixed, 1), "", "其他儲蓄／月", sv[2], "例：出國基金"]);
+    for (let r = 2; r < FIXED_ROWS; r++){
+      const left = r < INCOME_ROWS ? iRow(r) : r === INCOME_ROWS + 1 ? ["日常花費設定", "", ""] : r === INCOME_ROWS + 2 ? ["餐費每日", o.mealDaily || 0, "以當月天數計"] : ["", "", ""];
+      top.push([...left, "", ...row3(fixed, r)]);
+    }
     put(M, "A1", top); // rows 1-15
+    const iEnd = 5 + INCOME_ROWS, mealRow = 5 + INCOME_ROWS + 3; // 收入清單 A6:C10、餐費 B13
     const tH = 18, tR0 = 20, tR1 = tR0 + MONTHS - 1, tTot = tR1 + 1;
     const tbl = [];
-    tbl.push(["", "收入", "", "", "", "", "", "固定支出", "", "", "日常花費", "", "投資儲蓄", "", "", "", "結餘", "", "", "本月星期天數（自動）"]);
-    tbl.push(["月份", "實領薪資\n（依發放月）", "年終\n實領", "家教\n堂數", "停課\n堂數", "家教\n收入", "收入\n小計", "每月\n固定", "依天\n計費", "固定支出\n小計", "餐費", "日常花費\n小計",
+    tbl.push(["", "收入", "", "", "", "", "固定支出", "", "", "日常花費", "", "投資儲蓄", "", "", "", "結餘", "", "", "本月星期天數（自動）"]);
+    tbl.push(["月份", "實領薪資\n（依發放月）", "年終\n實領", "每月\n收入", "依天\n收入", "收入\n小計", "每月\n固定", "依天\n計費", "固定支出\n小計", "餐費", "日常花費\n小計",
       "緊急\n預備金", "定期定額\n投資", "其他\n儲蓄", "投資儲蓄\n小計", "可用金額\n（收入−固定−日常）", "可自由\n花用", "", ...WD]);
-    const fr = `$E$6:$E$${5 + FIXED_ROWS}`, fa = `$F$6:$F$${5 + FIXED_ROWS}`, fg = `$G$6:$G$${5 + FIXED_ROWS}`;
+    const rng = (c, r0, r1) => `$${c}$${r0}:$${c}$${r1}`;
+    const fr = rng("E", 6, 5 + FIXED_ROWS), fa = rng("F", 6, 5 + FIXED_ROWS), fg = rng("G", 6, 5 + FIXED_ROWS);
+    const ir = rng("A", 6, iEnd), ia = rng("B", 6, iEnd), ig = rng("C", 6, iEnd);
     months.forEach(([y, m], i) => {
       const r = tR0 + i;
-      const cnt = WD.split("").map((w, k) => `${col(19 + k)}${r}`);
-      const days = (txt) => WD.split("").map((w, k) => `ISNUMBER(FIND("${w}",${txt}))*${cnt[k]}`).join("+");
+      const cnt = WD.split("").map((w, k) => `${col(18 + k)}${r}`);
+      const days = txt => WD.split("").map((w, k) => `ISNUMBER(FIND("${w}",${txt}))*${cnt[k]}`).join("+");
       tbl.push([`=DATE(${y},${m},1)`,
         `=SUMPRODUCT((YEAR('薪資明細'!$N$6:$N$${pEnd})=YEAR($A${r}))*(MONTH('薪資明細'!$N$6:$N$${pEnd})=MONTH($A${r}))*'薪資明細'!$H$6:$H$${pEnd})`,
-        "", `=${days("$B$6")}`, 0, `=MAX(0,$D${r}-$E${r})*$B$5`, `=$B${r}+$C${r}+$F${r}`,
+        "",
+        `=SUMPRODUCT((${ir}<>"")*(${ig}="")*${ia})`,
+        `=SUMPRODUCT((${ir}<>"")*(${ig}<>"")*${ia}*(${days(ig)}))`,
+        `=$B${r}+$C${r}+$D${r}+$E${r}`,
         `=SUMPRODUCT((${fr}<>"")*(${fg}="")*${fa})`,
         `=SUMPRODUCT((${fr}<>"")*(${fg}<>"")*${fa}*(${days(fg)}))`,
-        `=$H${r}+$I${r}`, `=$B$9*DAY(EOMONTH($A${r},0))`, `=$K${r}`,
-        "=$J$5", "=$J$6", "=$J$7", `=SUM(M${r}:O${r})`, `=$G${r}-$J${r}-$L${r}`, `=$Q${r}-$P${r}`, "",
+        `=$G${r}+$H${r}`, `=$B$${mealRow}*DAY(EOMONTH($A${r},0))`, `=$J${r}`,
+        "=$J$5", "=$J$6", "=$J$7", `=SUM(L${r}:N${r})`, `=$F${r}-$I${r}-$K${r}`, `=$P${r}-$O${r}`, "",
         ...WD.split("").map((w, k) => `=INT((WEEKDAY($A${r}-${k + 1})+EOMONTH($A${r},0)-$A${r})/7)`)]);
     });
-    const sumCols = "BCDEFGHIJKLMNOPQR".split("");
+    const sumCols = "BCDEFGHIJKLMNOPQ".split("");
     tbl.push(["合計", ...sumCols.map(c => `=SUM(${c}${tR0}:${c}${tR1})`)]);
-    tbl.push(["月平均", ...sumCols.map(c => ["C", "D", "E", "M", "N", "O"].includes(c) ? "" : `=ROUND(AVERAGE(${c}${tR0}:${c}${tR1}),0)`)]);
+    tbl.push(["月平均", ...sumCols.map(c => ["C", "L", "M", "N"].includes(c) ? "" : `=ROUND(AVERAGE(${c}${tR0}:${c}${tR1}),0)`)]);
     tbl.push([], ["說明"],
-      ["• 淺藍底是可以改的格子，其他會自動計算。App 和這份試算表會互相同步：在這裡改收入、固定支出、餐費、儲蓄，App 會跟著調整；在 App 裡改，也會寫回這裡。"],
-      ["• 固定支出：每月固定的項目「計費星期」留空；交通這種每天計費的，金額填每天的金額，「計費星期」填星期幾（例：一二五），會自動算出每個月有幾天。"],
-      ["• 實領薪資依「薪資明細」的實際發放月加總；不想算勞健保，也可以直接在這一欄填實領金額。"],
-      ["• 家教收入＝（家教堂數−停課堂數）×每堂收入，堂數依「家教上課星期」自動計算；遇到停課，填在那個月的「停課堂數」。"],
+      ["• 淺藍底是可以改的格子，其他會自動計算。App 和這份試算表會互相同步：在這裡改收入、固定支出、餐費、儲蓄，或新增、改名、刪除項目，App 會跟著調整；在 App 裡改，也會寫回這裡。"],
+      ["• 收入和固定支出：每月固定的項目「星期」留空；按天計算的（打工、家教、交通），金額填一天的金額，星期填星期幾（例：一二五），會自動算出每個月有幾天。"],
+      ["• 實領薪資依「薪資明細」的實際發放月加總；不想算勞健保，可以直接在這一欄填實領金額，或在上方收入清單新增「月薪」。"],
       ["• 投資儲蓄每個月預設等於上方設定的金額；某個月想調整，直接改那個月的格子。"],
       ["• 可用金額＝收入−固定支出−日常花費；可自由花用＝可用金額−投資儲蓄。"]);
     put(M, `A${tH}`, tbl);
-    widths(ID.main, [110, 90, 70, 55, 140, 75, 80, 75, 80, 80, 130, 80, 70, 75, 70, 80, 110, 80, 20, 34, 34, 34, 34, 34, 34, 34]);
+    widths(ID.main, [130, 90, 80, 55, 140, 75, 75, 75, 130, 75, 80, 70, 75, 70, 80, 110, 80, 20, 34, 34, 34, 34, 34, 34, 34]);
     height(ID.main, 0, 16, 22); height(ID.main, tH - 1, tH, 28); height(ID.main, tH, tH + 1, 48); height(ID.main, tR0 - 1, tTot + 1, 26);
-    section(ID.main, 3, 0, 3); section(ID.main, 3, 4, 7); section(ID.main, 3, 8, 11); section(ID.main, 7, 0, 3);
-    settingRows(ID.main, 4, 5, 0, 1, 2);
-    settingRows(ID.main, 5, 6, 0, 1, 2);
-    fmt(G(ID.main, 5, 6, 1, 2), {bg: C.inBg, fg: C.inFg, num: "text"});
-    settingRows(ID.main, 8, 9, 0, 1, 2);
-    fmt(G(ID.main, 4, 5, 4, 7), {bold: true, bg: C.total, fg: C.ink});
-    border(G(ID.main, 4, 5, 4, 7), {bottom: ["SOLID", C.dark]});
-    fmt(G(ID.main, 5, 5 + FIXED_ROWS, 4, 5), {bg: C.inBg, fg: C.inFg, num: "text"});
-    fmt(G(ID.main, 5, 5 + FIXED_ROWS, 5, 6), {bg: C.inBg, fg: C.inFg, num: "#,##0"});
-    fmt(G(ID.main, 5, 5 + FIXED_ROWS, 6, 7), {bg: C.inBg, fg: C.inFg, num: "text"});
-    border(G(ID.main, 5, 5 + FIXED_ROWS, 4, 7), {bottom: ["SOLID", C.line], innerHorizontal: ["SOLID", C.line]});
+    section(ID.main, 3, 0, 3); section(ID.main, 3, 4, 7); section(ID.main, 3, 8, 11); section(ID.main, mealRow - 2, 0, 3);
+    for (const c0 of [0, 4]){ fmt(G(ID.main, 4, 5, c0, c0 + 3), {bold: true, bg: C.total, fg: C.ink}); border(G(ID.main, 4, 5, c0, c0 + 3), {bottom: ["SOLID", C.dark]}); }
+    const listFmt = (c0, r1) => {
+      fmt(G(ID.main, 5, r1, c0, c0 + 1), {bg: C.inBg, fg: C.inFg, num: "text"});
+      fmt(G(ID.main, 5, r1, c0 + 1, c0 + 2), {bg: C.inBg, fg: C.inFg, num: "#,##0"});
+      fmt(G(ID.main, 5, r1, c0 + 2, c0 + 3), {bg: C.inBg, fg: C.inFg, num: "text"});
+      border(G(ID.main, 5, r1, c0, c0 + 3), {bottom: ["SOLID", C.line], innerHorizontal: ["SOLID", C.line]});
+    };
+    listFmt(0, iEnd); listFmt(4, 5 + FIXED_ROWS);
+    settingRows(ID.main, mealRow - 1, mealRow, 0, 1, 2);
     settingRows(ID.main, 4, 7, 8, 9, 10);
-    const g2 = [[0, 1, C.navy, C.total], [1, 7, C.inc, C.incL], [7, 10, C.fix, C.fixL], [10, 12, C.day, C.dayL], [12, 16, C.sav, C.savL], [16, 18, C.bal, C.balL], [19, 26, C.dark, C.total]];
+    const g2 = [[0, 1, C.navy, C.total], [1, 6, C.inc, C.incL], [6, 9, C.fix, C.fixL], [9, 11, C.day, C.dayL], [11, 15, C.sav, C.savL], [15, 17, C.bal, C.balL], [18, 25, C.dark, C.total]];
     g2.forEach(([a, b, dark, light]) => { if (b - a > 1) merge(G(ID.main, tH - 1, tH, a, b)); fmt(G(ID.main, tH - 1, tH, a, b), {bold: true, bg: dark, fg: "#FFFFFF", wrap: b - a === 1}); fmt(G(ID.main, tH, tH + 1, a, b), {bold: true, bg: light, fg: C.ink, wrap: true}); });
-    fmt(G(ID.main, tH - 1, tH, 19, 26), {bold: true, bg: C.dark, fg: "#FFFFFF", size: 9});
-    border(G(ID.main, tH, tH + 1, 0, 26), {bottom: ["SOLID", C.dark]});
+    fmt(G(ID.main, tH - 1, tH, 18, 25), {bold: true, bg: C.dark, fg: "#FFFFFF", size: 9});
+    border(G(ID.main, tH, tH + 1, 0, 25), {bottom: ["SOLID", C.dark]});
     fmt(G(ID.main, tR0 - 1, tR1, 0, 1), {num: "date"});
-    fmt(G(ID.main, tR0 - 1, tR1, 1, 18), {num: NUM});
-    for (const c of [2, 4, 12, 13, 14]) fmt(G(ID.main, tR0 - 1, tR1, c, c + 1), {num: NUM, bg: C.inBg, fg: C.inFg});
-    fmt(G(ID.main, tR0 - 1, tR1, 16, 18), {num: NUM, bold: true, bg: C.balBg, fg: C.navy});
-    fmt(G(ID.main, tR0 - 1, tR1, 19, 26), {num: "0", size: 9, fg: C.gray});
-    border(G(ID.main, tR0 - 1, tR1, 0, 18), {bottom: ["SOLID", C.line], innerHorizontal: ["SOLID", C.line]});
-    fmt(G(ID.main, tR1, tR1 + 2, 0, 18), {num: NUM, bold: true, bg: C.total});
-    border(G(ID.main, tR1, tR1 + 1, 0, 18), {top: ["SOLID", C.dark]});
-    border(G(ID.main, tR1, tR1 + 2, 0, 18), {bottom: ["SOLID", C.line], innerHorizontal: ["SOLID", C.line]});
+    fmt(G(ID.main, tR0 - 1, tR1, 1, 17), {num: NUM});
+    for (const c of [2, 11, 12, 13]) fmt(G(ID.main, tR0 - 1, tR1, c, c + 1), {num: NUM, bg: C.inBg, fg: C.inFg});
+    fmt(G(ID.main, tR0 - 1, tR1, 15, 17), {num: NUM, bold: true, bg: C.balBg, fg: C.navy});
+    fmt(G(ID.main, tR0 - 1, tR1, 18, 25), {num: "0", size: 9, fg: C.gray});
+    border(G(ID.main, tR0 - 1, tR1, 0, 17), {bottom: ["SOLID", C.line], innerHorizontal: ["SOLID", C.line]});
+    fmt(G(ID.main, tR1, tR1 + 2, 0, 17), {num: NUM, bold: true, bg: C.total});
+    border(G(ID.main, tR1, tR1 + 1, 0, 17), {top: ["SOLID", C.dark]});
+    border(G(ID.main, tR1, tR1 + 2, 0, 17), {bottom: ["SOLID", C.line], innerHorizontal: ["SOLID", C.line]});
     fmt(G(ID.main, tTot + 2, tTot + 3, 0, 1), {bold: true, fg: C.navy, align: "LEFT"});
-    fmt(G(ID.main, tTot + 3, tTot + 9, 0, 1), {size: 9, fg: C.gray, align: "LEFT"});
-    req.push({addDimensionGroup: {range: {sheetId: ID.main, dimension: "COLUMNS", startIndex: 18, endIndex: 26}}});
-    req.push({updateDimensionGroup: {dimensionGroup: {range: {sheetId: ID.main, dimension: "COLUMNS", startIndex: 18, endIndex: 26}, depth: 1, collapsed: true}, fields: "collapsed"}});
+    fmt(G(ID.main, tTot + 3, tTot + 8, 0, 1), {size: 9, fg: C.gray, align: "LEFT"});
+    req.push({addDimensionGroup: {range: {sheetId: ID.main, dimension: "COLUMNS", startIndex: 17, endIndex: 25}}});
+    req.push({updateDimensionGroup: {dimensionGroup: {range: {sheetId: ID.main, dimension: "COLUMNS", startIndex: 17, endIndex: 25}, depth: 1, collapsed: true}, fields: "collapsed"}});
 
     const sheets = [
       {properties: {sheetId: ID.main, title: M, index: 0, gridProperties: {rowCount: 200, columnCount: 26, frozenRowCount: tH + 1, frozenColumnCount: 1, hideGridlines: true}, tabColorStyle: {rgbColor: rgb(C.inc)}}},
@@ -689,7 +695,7 @@ const LIFE_BOOK = (() => {
       {properties: {sheetId: ID.app, title: "_app", index: 4, hidden: true}}];
     return {sheets, data, requests: req};
   }
-  return {build, FIXED_ROWS, WD};
+  return {build, FIXED_ROWS, INCOME_ROWS, MEAL_ROW: 5 + INCOME_ROWS + 3, WD};
 })();
 
 /* ===== 👾 獨立版執行環境：Google 登入、試算表存資料、Google 日曆 =====
@@ -794,11 +800,11 @@ const LIFE_SCOPES = "openid email profile https://www.googleapis.com/auth/drive.
   const WDS = "日一二三四五六";
   async function writeBack(id){
     const st = store.get("life/settings"); if (!st || st.sheetLayout !== 2 || typeof LIFE_BOOK === "undefined") return;
-    const N = LIFE_BOOK.FIXED_ROWS, days = a => (a || []).slice().sort().map(w => WDS[w]).join("");
-    const fx = (st.fixed || []).filter(it => it.name).slice(0, N).map(it => ["'" + it.name, Number(it.amount) || 0, it.kind === "weekday" ? days(it.weekdays) : ""]);
-    while (fx.length < N) fx.push(["", "", ""]);
+    const N = LIFE_BOOK.FIXED_ROWS, NI = LIFE_BOOK.INCOME_ROWS, days = a => (a || []).slice().sort().map(w => WDS[w]).join("");
+    const rows = (list, n) => { const out = (list || []).filter(it => it.name).slice(0, n).map(it => ["'" + it.name, Number(it.amount) || 0, it.kind === "weekday" ? days(it.weekdays) : ""]); while (out.length < n) out.push(["", "", ""]); return out; };
+    const fx = rows(st.fixed, N), inc = rows(Array.isArray(st.incomes) ? st.incomes : [], NI);
     const sv = k => { const x = (st.savings || []).find(v => v.id === k); return x ? Number(x.amount) || 0 : ""; };
-    const data = [{range: "收支表!B5:B6", values: [[Number(st.tutor?.rate) || 0], [days(st.tutor?.weekdays)]]}, {range: "收支表!B9", values: [[Number(st.meal?.daily) || 0]]},
+    const data = [{range: `收支表!A6:C${5 + NI}`, values: inc}, {range: `收支表!B${LIFE_BOOK.MEAL_ROW}`, values: [[Number(st.meal?.daily) || 0]]},
       {range: `收支表!E6:G${5 + N}`, values: fx}, {range: "收支表!J5:J7", values: [[sv("emg")], [sv("inv")], [sv("abroad")]]}];
     const sig = JSON.stringify(data); if (sig === lsGet("backsig:" + id, null)) return;
     await api(`${SHEETS}/${id}/values:batchUpdate`, {method: "POST", body: JSON.stringify({valueInputOption: "USER_ENTERED", data})});
@@ -899,7 +905,7 @@ const LIFE_SCOPES = "openid email profile https://www.googleapis.com/auth/drive.
     const put = (p, v) => store.set(p, v);
     put("life/settings", {name, appName, email, startMonth: ym, sheetId, gcalTarget: calId, gcalTargetName: "👾" + appName, gcalShow: [calId], pages: [],
       tutor: {rate: 0, weekdays: [], perDay: 1, skip: {}}, salary: {}, bonus: {},
-      fixed: SEED_FIXED.map(f => ({id: rid(), ...f})), sheetLayout: 2, sheetFixedNames: SEED_FIXED.map(f => f.name),
+      fixed: SEED_FIXED.map(f => ({id: rid(), ...f})), activities: [], sheetLayout: 2, sheetFixedNames: SEED_FIXED.map(f => f.name), incomes: SEED_INCOMES.map(f => ({id: rid(), ...f})), sheetIncomeNames: SEED_INCOMES.map(f => f.name),
       fx: {usd: 32, fee: 0.015}, savings: [{id: "emg", name: "緊急預備金", amount: SEED_SAVINGS[0]}, {id: "inv", name: "定期定額投資", amount: SEED_SAVINGS[1]}, {id: "abroad", name: "其他儲蓄", amount: SEED_SAVINGS[2]}],
       goals: {gymPerWeek: 2, racketDays: 14}, leadSupply: 7, leadHealth: 14, meal: {daily: SEED_MEAL, cat: "餐飲"}, payday: 5, workoutPrice: {tennis: 0, pilates: 0}});
     put("supplies/" + rid(), {name: "洗髮精（範例）", cat: "洗沐用品", cycle: 45, price: 299, inst: 1, last: dayIso(-40), note: "可以刪掉，換成你自己的"});
@@ -910,10 +916,10 @@ const LIFE_SCOPES = "openid email profile https://www.googleapis.com/auth/drive.
   }
   const SEED_FIXED = [{name: "手機費（範例）", group: "電話", kind: "monthly", amount: 499}, {name: "捷運（範例）", group: "交通", kind: "weekday", amount: 60, weekdays: [1, 2, 3, 4, 5]},
     {name: "串流訂閱（範例）", kind: "monthly", amount: 270, noList: true}];
-  const SEED_SAVINGS = [3000, 3000, 0], SEED_MEAL = 250;
+  const SEED_SAVINGS = [3000, 3000, 0], SEED_MEAL = 250, SEED_INCOMES = [{name: "打工（範例）", kind: "weekday", amount: 0, weekdays: [6]}];
+  const days3 = f => [f.name, f.amount, f.kind === "weekday" ? f.weekdays.map(w => "日一二三四五六"[w]).join("") : ""];
   async function createSheet(appName){
-    const book = LIFE_BOOK.build({startYm: ymNow(), fixed: SEED_FIXED.map(f => [f.name, f.amount, f.kind === "weekday" ? f.weekdays.map(w => "日一二三四五六"[w]).join("") : ""]),
-      savings: SEED_SAVINGS, mealDaily: SEED_MEAL, tutorRate: 0, tutorDays: ""});
+    const book = LIFE_BOOK.build({startYm: ymNow(), fixed: SEED_FIXED.map(days3), incomes: SEED_INCOMES.map(days3), savings: SEED_SAVINGS, mealDaily: SEED_MEAL});
     const ss = await api(SHEETS, {method: "POST", body: JSON.stringify({properties: {title: `👾 ${appName}`, locale: "zh_TW", timeZone: tz}, sheets: book.sheets})});
     const id = ss.spreadsheetId;
     await api(`${DRIVE}/${id}`, {method: "PATCH", body: JSON.stringify({appProperties: {lifeapp: "1"}})}).catch(() => {});
@@ -1055,9 +1061,10 @@ const today0 = () => parseISO(iso(new Date()));
 const SPEND_CATS = ["餐飲","日用品","交通","娛樂","購物","醫療保健","運動","學習","其他"];
 const DEFAULT_SUPPLY_CATS = ["保養品","卸妝","常備藥品","日用品","其他"];
 const KIND = {monthly:"每月固定", usd:"美元計價", weekday:"依星期天數"};
+const INCOME_KIND = {monthly:"每月固定", weekday:"依星期天數"};
 const WORKOUT = {gym:"Gym", tennis:"Tennis", pilates:"Pilates"};
 const COL_SPEND_CAT = {supplies:"日用品", health:"醫療保健"};
-const EV_LABEL = {task:"任務", tutor:"家教", workout:"運動", supply:"補貨", health:"Self care", gcal:"Google 日曆"};
+const EV_LABEL = {task:"任務", tutor:"收入", workout:"運動", supply:"補貨", health:"Self care", gcal:"Google 日曆"};
 let MAXEV = 4; const mqSmall = matchMedia("(max-width:560px)"); const setMax = () => { MAXEV = mqSmall.matches ? 3 : 5; }; setMax(); mqSmall.addEventListener?.("change", () => { setMax(); render(); });
 const RULE = {weekly:"每週", monthly:"每月", yearly:"每年", interval:"每隔幾天"};
 
@@ -1165,13 +1172,26 @@ function carryInto(ym, s = S.settings){
   }
   return fin(ymAdd(ym, -1))?.remaining || 0;
 }
+/* 其他收入清單（家教、打工、月薪…）；舊資料的家教設定會自動當成第一項 */
+function incomesOf(s){
+  if (Array.isArray(s?.incomes)) return s.incomes;
+  const t = s?.tutor || {}, per = Number(t.perDay) || 1;
+  if (!Number(t.rate) && !(t.weekdays || []).length) return [];
+  return [{id: "tutor", name: "家教", kind: "weekday", amount: (Number(t.rate) || 0) * per, weekdays: (t.weekdays || []).slice(),
+    skip: Object.fromEntries(Object.entries(t.skip || {}).map(([k, v]) => [k, (Number(v) || 0) / per]))}];
+}
+function incomeDays(it, ym){ return Math.max(0, countWd(ym, it.weekdays) - (Number(it.skip?.[ym]) || 0)); }
+function incomeValue(it, ym){
+  if (it.from && ym < it.from) return 0;
+  if (it.to && ym > it.to) return 0;
+  const a = Number(it.amount) || 0;
+  return it.kind === "weekday" ? incomeDays(it, ym) * a : a;
+}
 function fin(ym){
   const s = S.settings; if (!s) return null;
   const so = s.salaryOverride?.[ym], salary = Number(so != null && so !== "" ? so : s.salary?.[ym])||0, bonus = Number(s.bonus?.[ym])||0;
-  const t = s.tutor || {rate:0, weekdays:[], perDay:1};
-  const sessions = countWd(ym, t.weekdays) * (Number(t.perDay)||1);
-  const skip = Number(t.skip?.[ym])||0;
-  const tutor = Math.max(0, sessions - skip) * (Number(t.rate)||0);
+  const incs = incomesOf(s).map(it => ({...it, value: incomeValue(it, ym)})).filter(x => x.value > 0);
+  const tutor = sum(incs, x => x.value), sessions = 0, skip = 0;
   const adjs = (s.salaryAdj||[]).filter(a => a.ym === ym && Number(a.amount)), adjTotal = sum(adjs, a => Number(a.amount)||0);
   const income = salary + bonus + tutor + adjTotal;
   const bchk = S.bills?.[ym]?.checked || {};
@@ -1192,7 +1212,7 @@ function fin(ym){
   const planned = plannedIn(ym), plannedTotal = sum(planned, x => x.amount);
   const otherSpent = sum(items.filter(x => !meal || x.cat !== meal.cat), x => Number(x.amount)||0);
   const remaining = free - otherSpent;
-  return {ym, insts, adjs, adjTotal, salary, bonus, sessions, skip, tutor, income, fixed, groups, fixedTotal, fixedCashTotal, carryIn, savings, savingsTotal, available, free, items, spent, otherSpent, meal, mealBudget, remaining, planned, plannedTotal, afterPlanned: remaining - plannedTotal};
+  return {ym, insts, adjs, adjTotal, salary, bonus, sessions, skip, tutor, incs, income, fixed, groups, fixedTotal, fixedCashTotal, carryIn, savings, savingsTotal, available, free, items, spent, otherSpent, meal, mealBudget, remaining, planned, plannedTotal, afterPlanned: remaining - plannedTotal};
 }
 
 /* ---------- due items ---------- */
@@ -1263,24 +1283,26 @@ const srcCare = src => { const m = String(src||"").match(/^health:([^:]+):/); re
 /* ---------- workouts ---------- */
 const allWorkouts = () => Object.values(S.workouts).flatMap(m => m.items || []);
 const workoutsOn = key => allWorkouts().filter(x => x.date === key);
-function workoutStats(ref){
-  const g = goals(), ws = weekStart(ref), we = addDays(ws, 6);
-  const all = allWorkouts();
-  const gym = all.filter(x => x.type === "gym" && x.date >= iso(ws) && x.date <= iso(we)).length;
-  const need = Math.max(0, g.gymPerWeek - gym), left = dayDiff(we, ref) + 1;
-  const gymLevel = need === 0 ? "ok" : need > left ? "crit" : "warn";
-  const gymLabel = need === 0 ? "本週達標" : need > left ? `本週剩 ${left} 天` : `還差 ${need} 次`;
-  const racket = all.filter(x => x.type !== "gym" && x.date <= iso(ref)).sort((a,b) => b.date.localeCompare(a.date));
-  const last = racket[0];
-  let rLevel = "warn", rLabel = "兩週內安排一次", deadline = null;
-  if (last){
-    deadline = addDays(parseISO(last.date), g.racketDays);
-    const d = dayDiff(deadline, ref);
-    rLevel = d < 0 ? "crit" : d <= 4 ? "warn" : "ok";
-    rLabel = d < 0 ? `已超過 ${-d} 天` : d === 0 ? "今天是期限" : `${mdEn(deadline)} 前（還有 ${d} 天）`;
-  }
-  return {gym, gymLevel, gymLabel, last, rLevel, rLabel, ws, we};
+function groupStats(g, ref){
+  const ids = g.acts.map(a => a.id), a0 = g.acts[0], n = Number(a0.n) || 0, ws = weekStart(ref), we = addDays(ws, 6);
+  const mine = allWorkouts().filter(x => ids.includes(x.type));
+  const week = mine.filter(x => x.date >= iso(ws) && x.date <= iso(we)).length;
+  const st = {name: g.acts.map(a => a.name).join(" / "), goal: a0.goal || "", n, week, ws, we, level:"ok", label:"", last:null};
+  if (st.goal === "week" && n){
+    const need = Math.max(0, n - week), left = dayDiff(we, ref) + 1;
+    st.level = need === 0 ? "ok" : need > left ? "crit" : "warn";
+    st.label = need === 0 ? "本週達標" : need > left ? `本週剩 ${left} 天` : `還差 ${need} 次`;
+    st.sub = `每週至少 ${n} 次`;
+  } else if (st.goal === "every" && n){
+    st.last = mine.filter(x => x.date <= iso(ref)).sort((a,b) => b.date.localeCompare(a.date))[0] || null;
+    st.level = "warn"; st.label = n === 14 ? "兩週內安排一次" : `${n} 天內安排一次`;
+    if (st.last){ const dl = addDays(parseISO(st.last.date), n), d = dayDiff(dl, ref);
+      st.level = d < 0 ? "crit" : d <= 4 ? "warn" : "ok"; st.label = d < 0 ? `已超過 ${-d} 天` : d === 0 ? "今天是期限" : `${mdEn(dl)} 前（還有 ${d} 天）`; }
+    st.sub = `每 ${n} 天至少 1 次`;
+  } else { st.sub = `本週 ${week} 次`; }
+  return st;
 }
+function workoutStats(ref){ const ws = weekStart(ref); return {ws, we: addDays(ws, 6), groups: actGroups().map(g => groupStats(g, ref))}; }
 
 function lateByTask(){
   const m = new Map(); overdueTasks().forEach(x => { if (!m.has(x.t.id) || m.get(x.t.id).late < x.late) m.set(x.t.id, x); });
@@ -1290,8 +1312,8 @@ function eventsOn(d){
   const key = iso(d), ev = [], s = S.settings, isToday = key === iso(new Date());
   if (isToday) lateByTask().forEach(x => ev.push({type:"task", id:x.t.id, text:`${x.t.name}（逾期 ${x.late} 天）`, done:false}));
   tasksOn(d).forEach(x => ev.push({type:"task", id:x.t.id, text:x.t.name, done:x.done}));
-  if (s?.tutor?.weekdays?.includes(d.getDay())) ev.push({type:"tutor", text:"家教"});
-  workoutsOn(key).forEach(w => ev.push({type:"workout", id:w.id, text:WORKOUT[w.type]}));
+  incomesOf(s).filter(it => it.kind === "weekday" && (it.weekdays||[]).includes(d.getDay()) && incomeValue(it, ymOf(d)) > 0).forEach(it => ev.push({type:"tutor", text: it.name}));
+  workoutsOn(key).forEach(w => ev.push({type:"workout", id:w.id, text:actName(w.type), ...(customActs() ? {label:"打卡"} : {})}));
   S.supplies.forEach(it => { const x = due(it, leadSupply()); if (!x.next) return;
     if (iso(x.next) === key) ev.push({type:"supply", id:it.id, text:`補貨 ${it.name}`});
     else if (isToday && x.days < 0) ev.push({type:"supply", id:it.id, text:`補貨 ${it.name}（逾期 ${-x.days} 天）`}); });
@@ -1328,7 +1350,19 @@ function addMonthItem(col, entry){
   S[col][ym] = cur; saveMonthDoc(col, ym);
   return id;
 }
-const workoutPrice = t => Number(S.settings?.workoutPrice?.[t] ?? 0);
+const legacyPrice = t => Number(S.settings?.workoutPrice?.[t] ?? {tennis:550, pilates:800}[t] ?? 0);
+/* 打卡項目（運動、讀書…）：舊資料沒有清單時沿用 Gym／Tennis／Pilates */
+function actsLegacy(){ const g = goals(); return [
+  {id:"gym", name:"Gym", goal:"week", n:g.gymPerWeek, price:legacyPrice("gym")},
+  {id:"tennis", name:"Tennis", goal:"every", n:g.racketDays, group:"racket", price:legacyPrice("tennis")},
+  {id:"pilates", name:"Pilates", goal:"every", n:g.racketDays, group:"racket", price:legacyPrice("pilates")}]; }
+const acts = () => Array.isArray(S.settings?.activities) ? S.settings.activities : actsLegacy();
+const customActs = () => Array.isArray(S.settings?.activities);
+const actName = t => acts().find(a => a.id === t)?.name || WORKOUT[t] || "已刪除的項目";
+const actCat = t => (WORKOUT[t] ? "運動" : acts().find(a => a.id === t)?.cat) || "運動";
+const workoutPrice = t => { const a = acts().find(x => x.id === t); return Number(a ? a.price : legacyPrice(t)) || 0; };
+const ACT_GOAL = {"":"不設目標", week:"每週至少幾次", every:"每幾天至少一次"};
+function actGroups(){ const out = []; for (const a of acts()){ const k = a.group || a.id; let g = out.find(x => x.key === k); if (!g){ g = {key:k, acts:[]}; out.push(g); } g.acts.push(a); } return out; }
 function delMonthItem(col, ym, id){
   const cur = clone(S[col][ym] || {items:[]});
   cur.items = cur.items.filter(x => x.id !== id); S[col][ym] = cur; saveMonthDoc(col, ym);
@@ -1486,7 +1520,7 @@ function openFree(view, d, ym){
   const R = (k, v, opt = {}) => `<div class="fld ${opt.act ? "tap" : ""}" ${opt.act ? `data-act="${opt.act}" data-ym="${ym}" style="grid-template-columns:1fr auto;cursor:pointer"` : `style="grid-template-columns:1fr auto${opt.b ? ";font-weight:700" : ""}"`}><span>${k}${opt.act ? ' <span class="note">›</span>' : ""}${opt.sub ? `<br><span class="note">${opt.sub}</span>` : ""}</span><span class="${opt.neg ? "neg" : ""}">${v}</span></div>`;
   const neg = v => `−${money(v)}`;
   let body = `<div class="group">
-    ${R("收入", money(f.income), {sub: [f.salary ? `薪資 ${money(f.salary)}` : "", f.bonus ? `年終 ${money(f.bonus)}` : "", f.tutor ? `家教 ${money(f.tutor)}` : "", f.adjTotal ? `調整 ${signed(f.adjTotal)}` : ""].filter(Boolean).join("・")})}
+    ${R("收入", money(f.income), {sub: [f.salary ? `薪資 ${money(f.salary)}` : "", f.bonus ? `年終 ${money(f.bonus)}` : "", ...f.incs.map(x => `${esc(x.name)} ${money(x.value)}`), f.adjTotal ? `調整 ${signed(f.adjTotal)}` : ""].filter(Boolean).join("・")})}
     ${R("固定支出", neg(f.fixedTotal), {act: "fixedAll"})}
     ${f.mealBudget ? R("餐費預算", neg(f.mealBudget), {sub: `${money(f.meal.daily)} × ${f.meal.n} 天`}) : ""}
     ${f.savingsTotal ? R("儲蓄", neg(f.savingsTotal)) : ""}
@@ -1605,7 +1639,7 @@ function renderDay(d){
   const tDone = tlist.filter(x => x.done).length;
   const agenda = [];
   const s = S.settings;
-  if (s?.tutor?.weekdays?.includes(d.getDay())) agenda.push(row(`家教 ${s.tutor.perDay||1} 堂`, "", `+${money((s.tutor.rate||0)*(s.tutor.perDay||1))}`));
+  incomesOf(s).filter(it => it.kind === "weekday" && (it.weekdays||[]).includes(d.getDay()) && incomeValue(it, ymOf(d)) > 0).forEach(it => agenda.push(row(esc(it.name), "", `+${money(it.amount)}`)));
   (s?.fixed||[]).filter(it => it.kind === "weekday" && (it.weekdays||[]).includes(d.getDay()) && fixedValue(it, ymOf(d), s) > 0)
     .forEach(it => agenda.push(row(esc(it.name), "通勤", money(it.amount))));
   const dueRows = [];
@@ -1633,14 +1667,14 @@ function renderDay(d){
 }
 
 function workoutSec(d){
-  const st = workoutStats(d), g = goals(), key = iso(d);
-  const pips = [...Array(Math.max(g.gymPerWeek, st.gym))].map((_,i) => `<span class="pip ${i < st.gym ? "on" : ""}"></span>`).join("");
+  if (!acts().length) return "";
+  const st = workoutStats(d), key = iso(d);
   const logged = workoutsOn(key);
-  const body = `${row("Gym", `每週至少 ${g.gymPerWeek} 次・<span class="tag ${st.gymLevel}">${st.gymLabel}</span>`, `<span class="pips" aria-label="本週 ${st.gym} 次">${pips}</span>`)}
-    ${row("Tennis / Pilates", `每 ${g.racketDays} 天至少 1 次・<span class="tag ${st.rLevel}">${st.rLabel}</span>`, st.last ? `上次 ${mdEn(parseISO(st.last.date))}` : "")}
-    ${logged.map(w => `<div class="rowi" data-item="workout" data-ym="${w.date.slice(0,7)}" data-id="${w.id}"><span class="main"><span class="t">${WORKOUT[w.type]}</span><span class="s">已記錄・${mdEn(d)}</span></span></div>`).join("")}
-    <div class="logbtns">${Object.entries(WORKOUT).map(([k,l]) => `<button class="btn" data-act="logWorkout" data-type="${k}" data-d="${key}">+ ${l}</button>`).join("")}</div>`;
-  return sec("Workout", body, `${mdEn(st.ws)} – ${mdEn(st.we)}`);
+  const body = st.groups.map(g => row(esc(g.name), `${g.sub}${g.label ? `・<span class="tag ${g.level}">${g.label}</span>` : ""}`,
+      g.goal === "week" ? `<span class="pips" aria-label="本週 ${g.week} 次">${[...Array(Math.max(g.n, g.week))].map((_,i) => `<span class="pip ${i < g.week ? "on" : ""}"></span>`).join("")}</span>` : g.last ? `上次 ${mdEn(parseISO(g.last.date))}` : "")).join("")
+    + logged.map(w => `<div class="rowi" data-item="workout" data-ym="${w.date.slice(0,7)}" data-id="${w.id}"><span class="main"><span class="t">${esc(actName(w.type))}</span><span class="s">已記錄・${mdEn(d)}</span></span></div>`).join("")
+    + `<div class="logbtns">${acts().map(a => `<button class="btn" data-act="logWorkout" data-type="${esc(a.id)}" data-d="${key}">+ ${esc(a.name)}</button>`).join("")}</div>`;
+  return sec(customActs() ? "Check-in" : "Workout", body, `${mdEn(st.ws)} – ${mdEn(st.we)}`);
 }
 
 function spendForm(dateKey, scope){
@@ -1678,7 +1712,9 @@ function renderWeek(c){
   const tk = [...Array(7)].flatMap((_,i) => tasksOn(addDays(m,i)));
   return `<div class="widgets" style="grid-template-columns:repeat(3,minmax(0,1fr))">
       <div class="wdg"><span class="k">本週任務</span><span class="n">${tk.filter(x => x.done).length}/${tk.length}</span><span class="x">已完成</span></div>
-      <div class="wdg"><span class="k">本週 Gym</span><span class="n">${st.gym}/${goals().gymPerWeek}</span><span class="x">${st.gymLabel}</span></div>
+      ${(() => { const g = st.groups.find(x => x.goal === "week") || st.groups[0];
+        return g ? `<div class="wdg"><span class="k">本週 ${esc(g.name)}</span><span class="n">${g.goal === "week" ? `${g.week}/${g.n}` : g.week}</span><span class="x">${g.goal === "week" ? g.label : "次"}</span></div>`
+          : `<div class="wdg"><span class="k">本週行程</span><span class="n">${[...Array(7)].reduce((t,_,i) => t + eventsOn(addDays(m,i)).filter(e => e.type === "gcal").length, 0)}</span><span class="x">Google 日曆</span></div>`; })()}
       <div class="wdg"><span class="k">本週支出</span><span class="n">${money(wkSpent)}</span><span class="x">${mdEn(m)} 起</span></div></div>
     ${sec("Days", rows, "", "點日期可以看當天細節、勾選任務、記錄運動。")}`;
 }
@@ -1694,11 +1730,10 @@ function renderMonth(c){
       <span class="evs">${ev.slice(0, ev.length > MAXEV ? MAXEV-1 : MAXEV).map((e,i) => `<button type="button" class="ev ${e.type} ${e.done?'isdone':''}" data-act="openEvent" data-d="${iso(d)}" data-i="${i}" title="${esc(e.text)}">${esc(e.text)}</button>`).join("")}${ev.length > MAXEV ? `<button type="button" class="ev more" data-act="openDay" data-d="${iso(d)}">+${ev.length-MAXEV+1}</button>` : ""}</span>
       ${sp ? `<span class="sp">${money(sp)}</span>` : ""}</div>`;
   }
-  const gymCount = allWorkouts().filter(x => x.type === "gym" && x.date.startsWith(ym)).length;
-  const racketCount = allWorkouts().filter(x => x.type !== "gym" && x.date.startsWith(ym)).length;
-  return `<section class="sec"><div class="sec-h"><span>${ymEn(ym)}</span><span class="legend" style="text-transform:none"><span style="color:var(--accent)">Tasks</span><span style="color:var(--ink)">Work</span><span style="color:var(--teal)">Tutoring</span><span style="color:var(--indigo)">Workout</span><span style="color:var(--orange)">Supplies</span>${pages().length ? `<span style="color:var(--green)">${esc(careLabel())}</span>` : ""}</span></div>
+  const actNote = actGroups().map(g => { const ids = g.acts.map(a => a.id); return `${g.acts.map(a => a.name).join(" / ")} ${allWorkouts().filter(x => ids.includes(x.type) && x.date.startsWith(ym)).length} 次`; }).join("・");
+  return `<section class="sec"><div class="sec-h"><span>${ymEn(ym)}</span><span class="legend" style="text-transform:none"><span style="color:var(--accent)">Tasks</span><span style="color:var(--ink)">Work</span><span style="color:var(--teal)">Income</span>${acts().length ? `<span style="color:var(--indigo)">${customActs() ? "Check-in" : "Workout"}</span>` : ""}<span style="color:var(--orange)">Supplies</span>${pages().length ? `<span style="color:var(--green)">${esc(careLabel())}</span>` : ""}</span></div>
     <div class="group"><div class="cal">${cells}</div></div>
-    <div class="sec-f">本月 Gym ${gymCount} 次・Tennis / Pilates ${racketCount} 次　${gcalNote()}　${gpushNote()}</div></section>`;
+    <div class="sec-f">${actNote ? `本月 ${esc(actNote)}　` : ""}${gcalNote()}　${gpushNote()}</div></section>`;
 }
 
 /* ---------- tasks page ---------- */
@@ -1825,7 +1860,7 @@ function trendSec(ym){
 function openIncome(ym){
   const f = fin(ym), R = (k, v, sub, act) => `<div class="fld ${act ? "tap" : ""}" ${act ? `data-act="${act}" data-ym="${ym}"` : ""} style="grid-template-columns:1fr auto${act ? ";cursor:pointer" : ""}"><span>${k}${act ? ' <span class="note">›</span>' : ""}${sub ? `<br><span class="note">${sub}</span>` : ""}</span><span>${v}</span></div>`;
   const rows = R("實領薪資", money(f.salary)) + (f.bonus ? R("年終實領", money(f.bonus)) : "") + f.adjs.map(a => R(esc(a.label || "薪資調整"), signed(Number(a.amount)))).join("")
-    + R(`家教 ${f.sessions - f.skip} 堂`, money(f.tutor), f.skip ? `停課 ${f.skip} 堂` : "") + (f.carryIn ? R(`${Number(ymAdd(ym,-1).slice(5))} 月結餘轉入`, signed(f.carryIn), "", "carryDetail") : "");
+    + f.incs.map(x => R(esc(x.name), money(x.value), x.kind === "weekday" ? `${incomeDays(x, ym)} 天 × ${money(x.amount)}` : "")).join("") + (f.carryIn ? R(`${Number(ymAdd(ym,-1).slice(5))} 月結餘轉入`, signed(f.carryIn), "", "carryDetail") : "");
   openList(`收入・${ymZh(ym)}`, rows, f.income + f.carryIn);
 }
 function openSavings(ym){
@@ -1989,7 +2024,7 @@ function wdPicker(path, arr, idp){
 function guideSec(){
   return `<details class="adv guide" ${S.settings && Object.keys(S.spend||{}).length ? "" : "open"}><summary>使用說明</summary><div class="card" style="padding:14px 16px;line-height:1.8;font-size:.9rem">
     <p style="margin:0 0 8px"><b>第一次用</b>：名稱裡有「（範例）」的都是範例，可以直接改成自己的或刪掉（手機往左滑、電腦按右鍵）。</p>
-    <p style="margin:0 0 8px"><b>每月收入</b>：在下面的 Monthly Income 填實領薪資；也可以填在你的 Google 試算表「收支表」，app 會自動同步。</p>
+    <p style="margin:0 0 8px"><b>每月收入</b>：在下面的 Monthly Income 填實領薪資，月薪、打工、家教這些收入可以自己新增（每月固定或依星期天數計算），也會同步到試算表「收支表」的收入設定。</p>
     <p style="margin:0 0 8px"><b>固定支出</b>：手機費、交通、訂閱等。勾「列入清單」的會出現在每月的預扣清單，付完打勾就好，不用再記帳。</p>
     <p style="margin:0 0 8px"><b>發薪日和信用卡</b>：在下面的 Goals & Reminders 改成自己的發薪日、信用卡結帳日和繳款截止日；沒有用信用卡的話，把「有用信用卡」關掉就好。</p>
     <p style="margin:0 0 8px"><b>記帳</b>：右下角「＋」可以記一筆支出、記餐費、加入待買。清單裡已經預扣的東西打勾就好。</p>
@@ -2021,24 +2056,30 @@ function saveAmt(x, ym, s = S.settings){
 function renderSettings(ym){
   const s = S.settings, t = s.tutor, g = goals();
   const OPEN = t2 => `<section class="sec"><div class="sec-h"><span>${t2}</span></div><div class="group"><div class="pad">`, CLOSE = `</div></div></section>`;
+  if (!Array.isArray(s.incomes)) s.incomes = clone(incomesOf(s));
   return `<div class="grid2 settings-grid">${OPEN(`Monthly Income・${ymEn(ym)}`)}
     <div class="frow">
       <label class="f">實領薪資<input id="s-sal" type="number" data-bind="salaryOverride.${ym}" value="${s.salaryOverride?.[ym] ?? ""}" placeholder="${s.salary?.[ym] ?? ""}"></label>
       <label class="f">年終實領<input id="s-bonus" type="number" data-bind="bonus.${ym}" value="${s.bonus?.[ym] ?? ""}"></label>
-      <label class="f">家教停課堂數<input id="s-skip" type="number" data-bind="tutor.skip.${ym}" value="${t.skip?.[ym] ?? ""}"></label>
       ${ym === startYm() ? `<label class="f">${Number(ymAdd(ym,-1).slice(5))} 月餘額<input id="s-open" type="number" data-bind="opening.balance" value="${s.opening?.balance ?? ""}"></label>` : ""}
     </div>
+    <div class="tablewrap"><table class="edit"><thead><tr><th>名稱</th><th>計算方式</th><th>金額</th><th>星期</th><th>本月少算（天）</th><th>起始月</th><th>結束月</th><th></th></tr></thead><tbody>
+    ${s.incomes.map((it,i) => `<tr>
+      <td><input id="in-n-${i}" type="text" data-bind="incomes.${i}.name" data-type="text" value="${esc(it.name)}"></td>
+      <td><select id="in-k-${i}" data-bind="incomes.${i}.kind" data-type="text">${Object.entries(INCOME_KIND).map(([k,l]) => `<option value="${k}" ${it.kind===k?"selected":""}>${l}</option>`).join("")}</select></td>
+      <td><input id="in-a-${i}" type="number" step="any" data-bind="incomes.${i}.amount" value="${it.amount ?? ""}" style="width:90px"><span class="note">${it.kind==="weekday"?" /天":""}</span></td>
+      <td>${it.kind==="weekday" ? wdPicker(`incomes.${i}.weekdays`, it.weekdays, `iwd${i}`) : '<span class="note">—</span>'}</td>
+      <td>${it.kind==="weekday" ? `<input id="in-s-${i}" type="number" step="any" data-bind="incomes.${i}.skip.${ym}" value="${it.skip?.[ym] ?? ""}" placeholder="0" style="width:70px">` : '<span class="note">—</span>'}</td>
+      <td><input id="in-f-${i}" type="month" data-bind="incomes.${i}.from" data-type="text" value="${it.from||""}"></td>
+      <td><input id="in-t-${i}" type="month" data-bind="incomes.${i}.to" data-type="text" value="${it.to||""}"></td>
+      <td><button class="link red" data-act="delIncome" data-i="${i}">刪除</button></td></tr>`).join("")}
+    </tbody></table></div>
+    <div><button class="link" data-act="addIncome">+ 新增收入（月薪、打工、家教…）</button></div>
     ${(s.salaryAdj||[]).map((a,i) => a.ym === ym ? `<div class="frow" style="grid-template-columns:1fr 140px auto">
       <input id="adj-l-${i}" type="text" data-bind="salaryAdj.${i}.label" data-type="text" value="${esc(a.label||"")}" aria-label="調整說明" placeholder="說明，例：11月補發">
       <input id="adj-a-${i}" type="number" data-bind="salaryAdj.${i}.amount" value="${a.amount ?? ""}" aria-label="金額（可為負數）">
       <button class="link red" data-act="delAdj" data-i="${i}">刪除</button></div>` : "").join("")}
     <div><button class="link" data-act="addAdj" data-ym="${ym}">+ 新增薪資調整（補發、延後、扣款）</button></div>
-    ${CLOSE}${OPEN("Tutoring")}
-    <div class="frow">
-      <label class="f">每堂收入<input id="s-rate" type="number" data-bind="tutor.rate" value="${t.rate ?? ""}"></label>
-      <label class="f">每天堂數<input id="s-perday" type="number" data-bind="tutor.perDay" value="${t.perDay ?? 1}"></label>
-    </div>
-    <div class="f">上課星期${wdPicker("tutor.weekdays", t.weekdays, "twd")}</div>
     ${CLOSE}</div><div class="grid2 settings-grid">${OPEN("Fixed Costs")}
     <div class="tablewrap"><table class="edit"><thead><tr><th>名稱</th><th>分組</th><th>計算方式</th><th>金額</th><th>其中現金</th><th>星期</th><th>起始月</th><th>結束月</th><th>列入清單</th><th></th></tr></thead><tbody>
     ${(s.fixed||[]).map((it,i) => `<tr>
@@ -2073,10 +2114,6 @@ function renderSettings(ym){
     </div>
     ${CLOSE}${OPEN("Goals & Reminders")}
     <div class="frow">
-      <label class="f">Gym 每週至少幾次<input id="s-gym" type="number" data-bind="goals.gymPerWeek" value="${g.gymPerWeek}"></label>
-      <label class="f">Tennis / Pilates 每幾天一次<input id="s-rk" type="number" data-bind="goals.racketDays" value="${g.racketDays}"></label>
-      <label class="f">Tennis 每次<input id="s-tp" type="number" data-bind="workoutPrice.tennis" value="${workoutPrice("tennis")}"></label>
-      <label class="f">Pilates 每次<input id="s-pp" type="number" data-bind="workoutPrice.pilates" value="${workoutPrice("pilates")}"></label>
       <label class="f">補貨提前幾天提醒<input id="s-ls" type="number" data-bind="leadSupply" value="${s.leadSupply ?? 7}"></label>
       <label class="f">發薪日（每月幾號）<input id="s-pd" type="number" min="1" max="28" data-bind="payday" value="${s.payday ?? 16}"></label>
       ${cardOn() ? `<label class="f">信用卡結帳日（每月幾號）<input id="s-cc" type="number" min="1" max="31" data-bind="cardClose" value="${cardClose()}"></label>
@@ -2095,12 +2132,15 @@ function renderSettings(ym){
       </select></label>
       <button class="link" data-act="reloadCals" style="align-self:end">${S.calList ? "重新整理清單" : "讀取日曆清單"}</button>
     </div>
+    <div class="row between"><span>${S.settings?.gsyncOff ? '<span class="tag gray">已關閉</span>' : (gpushNote() || `<span class="tag ${S.gpushState === "ok" ? "ok" : "gray"}">${S.gpushState === "ok" ? `已同步 ${Object.keys(S.gsync?.map || {}).length} 個項目` : "同步中…"}</span>`)}</span>
+      <a class="link" href="https://calendar.google.com/calendar/r" target="_blank" rel="noopener">開啟 Google 日曆 ↗</a></div>
     <div class="f">月曆上顯示哪些日曆
       ${S.calList ? `<div class="calpick">${S.calList.map((c,i) => { const on = readCals().includes(c.id) || (c.id === (S.settings?.email || "") && readCals().includes("primary"));
         return `<label><input id="gs-${i}" type="checkbox" data-gshow value="${esc(c.id)}" ${on ? "checked" : ""}><span>${esc(c.summary || c.id)}${c.id === S.settings?.gcalTarget ? `<em>寫入中</em>` : ""}</span></label>`; }).join("")}</div>`
         : `<div class="note">按右邊「讀取日曆清單」載入你的日曆。</div>`}
     </div>
     ${CLOSE}</div>
+    ${actManager()}
     ${catManager()}
     ${pageManager()}
     ${spendCatSection()}
@@ -2312,6 +2352,20 @@ function catManager(){
     <form class="rowi" data-form="cat"><span class="main"><input id="cat-new" name="name" type="text" placeholder="新類別，例：洗沐用品"></span><button class="link" type="submit">新增</button></form>
   </div><div class="sec-f">直接點名稱就能改名，品項會一起更新。刪除類別時，裡面的品項會移到「未分類」。</div></section>`;
 }
+function actManager(){
+  const s = S.settings; if (!Array.isArray(s.activities)) s.activities = clone(actsLegacy());
+  return `<section class="sec"><div class="sec-h"><span>Check-in</span><b>${s.activities.length} 項</b></div><div class="group"><div class="pad">
+    <div class="tablewrap"><table class="edit"><thead><tr><th>名稱</th><th>目標</th><th>次數／天數</th><th>每次花費</th><th></th></tr></thead><tbody>
+    ${s.activities.map((a,i) => `<tr>
+      <td><input id="ac-n-${i}" type="text" data-bind="activities.${i}.name" data-type="text" value="${esc(a.name)}"></td>
+      <td><select id="ac-g-${i}" data-bind="activities.${i}.goal" data-type="text">${Object.entries(ACT_GOAL).map(([k,l]) => `<option value="${k}" ${(a.goal||"")===k?"selected":""}>${l}</option>`).join("")}</select></td>
+      <td>${a.goal ? `<input id="ac-x-${i}" type="number" min="1" data-bind="activities.${i}.n" value="${a.n ?? ""}" style="width:70px">` : '<span class="note">—</span>'}</td>
+      <td><input id="ac-p-${i}" type="number" min="0" data-bind="activities.${i}.price" value="${a.price ?? ""}" placeholder="0" style="width:80px"></td>
+      <td><button class="link red" data-act="delAct" data-i="${i}">刪除</button></td></tr>`).join("")}
+    </tbody></table></div>
+    <form class="rowi" data-form="act" style="padding-left:0"><span class="main"><input id="ac-new" name="name" type="text" maxlength="16" placeholder="新項目，例：健身、跑步、讀書、彈琴"></span><button class="link" type="submit">新增</button></form>
+  </div></div><div class="sec-f">想固定做的事可以在這裡新增，首頁會出現打卡按鈕，可以設每週幾次或每幾天一次的目標；有填每次花費的話，打卡時會自動記帳。打卡也會寫進 Google 日曆。</div></section>`;
+}
 const MAX_PAGES = 3;
 function pageManager(){
   const ps = pages();
@@ -2429,9 +2483,9 @@ function openInst(id){
 function openWorkout(ym, id){
   const w = (S.workouts[ym]?.items||[]).find(x => x.id === id); if (!w) return;
   dlg.innerHTML = `<form method="dialog" data-form="workout" data-ym="${ym}" data-id="${id}">
-    ${dlgBar("編輯運動")}
+    ${dlgBar("編輯打卡")}
     <div class="dlg-body">
-      <div class="group">${fld("項目", `<select id="w-type" name="type">${Object.entries(WORKOUT).map(([k,l]) => `<option value="${k}" ${k===w.type?"selected":""}>${l}</option>`).join("")}</select>`)}
+      <div class="group">${fld("項目", `<select id="w-type" name="type">${acts().concat(acts().some(a => a.id === w.type) ? [] : [{id:w.type, name:actName(w.type)}]).map(a => `<option value="${esc(a.id)}" ${a.id===w.type?"selected":""}>${esc(a.name)}</option>`).join("")}</select>`)}
         ${fld("日期", `<input id="w-date" name="date" type="date" required value="${w.date}">`)}</div>
       <div class="group"><button class="link red" type="button" data-act="delRow" data-kind="workout" data-ym="${ym}" data-id="${id}" style="padding:12px">刪除這筆記錄</button></div>
     </div></form>`;
@@ -2543,8 +2597,8 @@ function openQuick(){
         <button type="button" class="fld" data-act="newItem" data-col="supplies" style="border:0;background:none;text-align:left;cursor:pointer;grid-template-columns:1fr auto"><span>新增補貨品項</span><span class="note">›</span></button>
         ${pages().map(pg => `<button type="button" class="fld" data-act="newItem" data-col="health" data-page="${esc(pg.id)}" style="border:0;background:none;text-align:left;cursor:pointer;grid-template-columns:1fr auto"><span>新增${esc(pg.name)}事項</span><span class="note">›</span></button>`).join("")}
       </div>
-      <div class="sub-h" style="padding:0 4px">運動打卡（今天）</div>
-      <div class="qgrid">${Object.entries(WORKOUT).map(([k,l]) => `<button type="button" class="btn" data-act="logWorkout" data-type="${k}" data-d="${iso(new Date())}" data-close="1">+ ${l}</button>`).join("")}</div>
+      ${acts().length ? `<div class="sub-h" style="padding:0 4px">打卡（今天）</div>
+      <div class="qgrid">${acts().map(a => `<button type="button" class="btn" data-act="logWorkout" data-type="${esc(a.id)}" data-d="${iso(new Date())}" data-close="1">+ ${esc(a.name)}</button>`).join("")}</div>` : ""}
     </div></form>`;
   if (!dlg.open) if (!dlg.open) dlg.showModal();
 }
@@ -2732,6 +2786,13 @@ app.addEventListener("submit", e => {
     const cats = spendCats().slice(); if (cats.includes(nv)) return toast("已經有這個類別了");
     cats.push(nv); S.settings.spendCats = cats; saveSettings(); return toast(`已新增類別：${nv}`);
   }
+  if (fm.dataset.form === "act"){
+    e.preventDefault();
+    const nv = String(new FormData(fm).get("name")||"").trim(); if (!nv || !S.settings) return;
+    if (!Array.isArray(S.settings.activities)) S.settings.activities = clone(actsLegacy());
+    if (S.settings.activities.some(a => a.name === nv)) return toast("已經有這個項目了");
+    S.settings.activities.push({id: uid(), name: nv, goal: "", n: "", price: 0, cat: nv}); ui.openSettings = true; saveSettings(); return toast(`已新增：${nv}`);
+  }
   if (fm.dataset.form === "page"){
     e.preventDefault();
     const nv = String(new FormData(fm).get("name")||"").trim(); if (!nv || !S.settings) return;
@@ -2828,7 +2889,7 @@ dlg.addEventListener("submit", e => {
     const price = workoutPrice(entry.type), keep = linked[0]?.[1];
     if (linked.length || price){
       linked.forEach(([m, x]) => delMonthItem("spend", m, x.id));
-      if (price) addMonthItem("spend", {date, amount: keep && keep.note === WORKOUT[entry.type] ? keep.amount : price, cat: keep?.cat || "運動", note: WORKOUT[entry.type], src: `workout:${id}`, ...(keep?.pay ? {pay: keep.pay} : {})});
+      if (price) addMonthItem("spend", {date, amount: keep && keep.note === actName(entry.type) ? keep.amount : price, cat: keep?.cat || actCat(entry.type), note: actName(entry.type), src: `workout:${id}`, ...(keep?.pay ? {pay: keep.pay} : {})});
     }
     toast("已更新");
   } else if (fm.dataset.form === "gevent"){
@@ -2951,10 +3012,11 @@ document.addEventListener("click", async e => {
   if (a === "logWorkout" && b.dataset.close && dlg.open) dlg.close();
   if (a === "logWorkout"){
     const t = b.dataset.type, d = b.dataset.d, wid = addMonthItem("workouts", {date:d, type:t}), price = workoutPrice(t);
-    if (price) addMonthItem("spend", {date:d, amount:price, cat:"運動", note:WORKOUT[t], src:`workout:${wid}`});
-    return toast(`已記錄：${WORKOUT[t]}${price ? `・記帳 ${money(price)}` : ""}`);
+    if (price) addMonthItem("spend", {date:d, amount:price, cat:actCat(t), note:actName(t), src:`workout:${wid}`});
+    return toast(`已記錄：${actName(t)}${price ? `・記帳 ${money(price)}` : ""}`);
   }
   if (a === "delWorkout") return delMonthItem("workouts", b.dataset.ym, b.dataset.id);
+  if (a === "delAct"){ const list = S.settings.activities; if (!Array.isArray(list)) return; const [x] = list.splice(Number(b.dataset.i), 1); ui.openSettings = true; saveSettings(); return toast(`已刪除「${x?.name || ""}」，之前的打卡紀錄會保留`, () => { list.splice(Number(b.dataset.i), 0, x); saveSettings(); }); }
   if (a === "delPage"){
     const ps = clone(pages()), [pg] = ps.splice(Number(b.dataset.i), 1); if (!pg) return;
     const items = S.health.filter(x => pageOf(x) === pg.id), prev = S.settings.pages === undefined ? undefined : clone(S.settings.pages);
@@ -2980,6 +3042,8 @@ document.addEventListener("click", async e => {
   if (a === "initSettings"){ S.settings = {startMonth:ymOf(new Date()), tutor:{rate:0, weekdays:[], perDay:1, skip:{}}, salary:{}, bonus:{}, fixed:[], fx:{usd:32, fee:0.015}, savings:[], goals:{gymPerWeek:2, racketDays:14}, leadSupply:7, leadHealth:14}; return saveSettings(); }
   if (a === "addAdj"){ (S.settings.salaryAdj ||= []).push({id:uid(), ym:b.dataset.ym, label:"", amount:0}); return saveSettings(); }
   if (a === "delAdj"){ S.settings.salaryAdj.splice(Number(b.dataset.i),1); return saveSettings(); }
+  if (a === "addIncome"){ if (!Array.isArray(S.settings.incomes)) S.settings.incomes = clone(incomesOf(S.settings)); S.settings.incomes.push({id:uid(), name:"新收入", kind:"monthly", amount:0}); ui.openSettings = true; return saveSettings(); }
+  if (a === "delIncome"){ S.settings.incomes.splice(Number(b.dataset.i),1); ui.openSettings = true; return saveSettings(); }
   if (a === "addFixed"){ S.settings.fixed.push({id:uid(), name:"新項目", kind:"monthly", amount:0}); ui.openSettings = true; return saveSettings(); }
   if (a === "delFixed"){ S.settings.fixed.splice(Number(b.dataset.i),1); ui.openSettings = true; return saveSettings(); }
   if (a === "addSaving"){ S.settings.savings.push({id:uid(), name:"新儲蓄", amount:0}); ui.openSettings = true; return saveSettings(); }
@@ -3102,7 +3166,7 @@ function parseSheet(text){
   const out = {salary:{}, bonus:{}, skip:{}, savings:{}, months:0};
   const head = rows.find(r => r[0] === "月份" && r.some(c => /實領/.test(c))) || [];
   const col = (re, def) => { const i = head.findIndex(c => re.test(c.replace(/\s+/g, ""))); return i >= 0 ? i : def; };
-  const C = {sal: col(/實領/, 1), bonus: col(/^年終/, 2), skip: col(/^停課/, 4), emg: col(/^緊急/, 13), inv: col(/^定期定額/, 14), abroad: col(/^其他儲蓄/, 15)};
+  const C = {sal: col(/實領/, 1), bonus: col(/^年終/, 2), skip: col(/^停課/, -1), emg: col(/^緊急/, 13), inv: col(/^定期定額/, 14), abroad: col(/^其他儲蓄/, 15)};
   for (const r of rows){
     const m = (r[0]||"").match(/^(\d{4})\/(\d{1,2})(?:\/\d{1,2})?$/); if (!m || r.length < 2) continue;
     const ym = `${m[1]}-${pad(Number(m[2]))}`;
@@ -3117,16 +3181,20 @@ function parseSheet(text){
   out.mealDaily = find(/^餐費每日/);
   out.saveBase = {emg: find(/^緊急預備金／月/), inv: find(/^定期定額投資／月/), abroad: find(/^其他儲蓄／月/)};
   { const hit = rows.find(r => r[0] === "家教上課星期"); out.tutorDays = hit ? String(hit[1] || "") : null; }
-  // 公版試算表的固定支出清單：「固定支出設定」下面一列是「名稱｜金額｜計費星期」
-  for (let i = 0; i + 1 < rows.length; i++){
-    const ci = rows[i].indexOf("固定支出設定"); if (ci < 0 || rows[i+1][ci] !== "名稱" || rows[i+1][ci+1] !== "金額") continue;
-    out.fixedRows = [];
-    for (let k = i + 2; k < rows.length && k < i + 2 + 12; k++){
-      const r = rows[k], name = String(r[ci] || "").trim(); if (/^(月份|收入)$/.test(name)) break;
-      if (name) out.fixedRows.push({name, amount: num(r[ci+1]) ?? 0, days: String(r[ci+2] || "")});
+  // 公版試算表的清單：「固定支出設定」「收入設定」下面一列是「名稱｜金額｜星期」
+  const listBlock = (label, max) => {
+    for (let i = 0; i + 1 < rows.length; i++){
+      const ci = rows[i].indexOf(label); if (ci < 0 || rows[i+1][ci] !== "名稱" || rows[i+1][ci+1] !== "金額") continue;
+      const list = [];
+      for (let k = i + 2; k < rows.length && k < i + 2 + max; k++){
+        const r = rows[k], name = String(r[ci] || "").trim(); if (/設定$|^(月份|收入)$/.test(name)) break;
+        if (name) list.push({name, amount: num(r[ci+1]) ?? 0, days: String(r[ci+2] || "")});
+      }
+      return list;
     }
-    break;
-  }
+    return null;
+  };
+  out.fixedRows = listBlock("固定支出設定", 10); out.incomeRows = listBlock("收入設定", 5);
   return out;
 }
 function applySheet(d){
@@ -3148,23 +3216,29 @@ function applySheet(d){
     if (JSON.stringify(st.savingsSheet || {}) !== JSON.stringify(ns)){ st.savingsSheet = ns; n++; } }
   const wdOf = t => [...new Set([...String(t || "")].map(ch => "日一二三四五六".indexOf(ch)).filter(w => w >= 0))].sort();
   if (d.tutorDays != null){ const w = wdOf(d.tutorDays); if (JSON.stringify(w) !== JSON.stringify(st.tutor.weekdays || [])){ st.tutor.weekdays = w; n++; } }
-  if (d.fixedRows){
-    st.fixed ||= [];
-    const prev = new Set(st.sheetFixedNames || []), seen = [];
-    for (const r of d.fixedRows){
-      seen.push(r.name);
+  const syncList = (key, namesKey, rows) => {
+    const list = (st[key] ||= []), prev = new Set(st[namesKey] || []), seen = new Set(rows.map(r => r.name));
+    const gone = list.filter(x => prev.has(x.name) && !seen.has(x.name)), fresh = rows.filter(r => !list.some(x => x.name === r.name));
+    gone.forEach((it, i) => { if (fresh[i]){ it.name = fresh[i].name; n++; } }); // 試算表改名：沿用原本的項目
+    for (const r of rows){
       const wd = wdOf(r.days);
-      let it = st.fixed.find(x => x.name === r.name);
-      if (!it){ st.fixed.push({id: uid(), name: r.name, kind: wd.length ? "weekday" : "monthly", amount: r.amount, ...(wd.length ? {weekdays: wd} : {})}); n++; continue; }
+      const it = list.find(x => x.name === r.name);
+      if (!it){ list.push({id: uid(), name: r.name, kind: wd.length ? "weekday" : "monthly", amount: r.amount, ...(wd.length ? {weekdays: wd} : {})}); n++; continue; }
       set(it, "amount", r.amount);
       if (it.kind === "usd") continue;
       if (wd.length){ if (it.kind !== "weekday"){ it.kind = "weekday"; n++; } if (JSON.stringify(it.weekdays || []) !== JSON.stringify(wd)){ it.weekdays = wd; n++; } }
       else if (it.kind === "weekday"){ it.kind = "monthly"; delete it.weekdays; n++; }
     }
-    const keep = st.fixed.filter(x => !(prev.has(x.name) && !seen.includes(x.name)));
-    if (keep.length !== st.fixed.length){ st.fixed = keep; n++; }
-    if (JSON.stringify(seen) !== JSON.stringify(st.sheetFixedNames || [])){ st.sheetFixedNames = seen; n++; }
-  }
+    const keep = list.filter(x => !(prev.has(x.name) && !seen.has(x.name)));
+    if (keep.length !== list.length){ st[key] = keep; n++; }
+    const names = rows.map(r => r.name);
+    if (JSON.stringify(names) !== JSON.stringify(st[namesKey] || [])){ st[namesKey] = names; n++; }
+  };
+  if (d.fixedRows) syncList("fixed", "sheetFixedNames", d.fixedRows);
+  if (d.incomeRows){ if (!Array.isArray(st.incomes)) st.incomes = clone(incomesOf(st)); syncList("incomes", "sheetIncomeNames", d.incomeRows); }
+  // 舊版試算表（家教每堂收入、停課堂數）同步到收入清單裡的家教
+  if (Array.isArray(st.incomes)){ const ti = st.incomes.find(x => x.id === "tutor"), per = Number(st.tutor.perDay) || 1;
+    if (ti){ if (d.tutorRate != null) set(ti, "amount", d.tutorRate * per); ti.skip ||= {}; for (const [ym, v] of Object.entries(d.skip || {})) if (v != null){ const dv = v / per; if (dv > 0) set(ti.skip, ym, dv); else if (ym in ti.skip){ delete ti.skip[ym]; n++; } } } }
   if (n){ S.settings = st; saveSettings(); }
   return n;
 }
@@ -3227,7 +3301,7 @@ function desiredEvents(){
     }
   }
   for (const x of lateByTask()) out[`late:${x.t.id}`] = {summary: `${GPREFIX}${x.t.name}（未完成）`, date: iso(t0), description: `原本 ${iso(x.date)}・完成後勾選就會移除・來自 👾👾👾 生活管理`};
-  for (const w of allWorkouts()) out[`workout:${w.id}`] = {summary: `${GPREFIX}${WORKOUT[w.type]}`, date: w.date, description: "運動記錄・來自 👾👾👾 生活管理"};
+  for (const w of allWorkouts()) out[`workout:${w.id}`] = {summary: `${GPREFIX}${actName(w.type)}`, date: w.date, description: "打卡記錄・來自 👾👾👾 生活管理"};
   return out;
 }
 const sigOf = e => JSON.stringify([e.summary, e.date, e.rrule||"", e.description].concat(e.st ? [e.st, e.et] : []).concat(e.loc ? [e.loc] : []));
@@ -3341,7 +3415,7 @@ function deleteRow(ref){
   const {kind, id, ym} = ref; let restore = null, name = "";
   if (kind === "spend" || kind === "workout"){
     const col = kind === "spend" ? "spend" : "workouts", entry = (S[col][ym]?.items||[]).find(x => x.id === id); if (!entry) return;
-    name = kind === "spend" ? (entry.note || entry.cat) : WORKOUT[entry.type];
+    name = kind === "spend" ? (entry.note || entry.cat) : actName(entry.type);
     delMonthItem(col, ym, id);
     const linked = kind === "workout" ? Object.entries(S.spend).flatMap(([m, d]) => (d.items||[]).filter(x => x.src === `workout:${id}`).map(x => [m, x])) : [];
     linked.forEach(([m, x]) => delMonthItem("spend", m, x.id));

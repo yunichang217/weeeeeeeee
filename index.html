@@ -695,7 +695,8 @@ const LIFE_BOOK = (() => {
       {properties: {sheetId: ID.app, title: "_app", index: 4, hidden: true}}];
     return {sheets, data, requests: req};
   }
-  return {build, FIXED_ROWS, INCOME_ROWS, MEAL_ROW: 5 + INCOME_ROWS + 3, WD};
+  const TITLES = {"Monthly Income": ["收入", "A4", "B18"], "Fixed Costs": ["固定支出", "E4", "G18"], "Savings": ["投資儲蓄", "I4", "L18"], "Meals": ["日常花費", `A${5 + INCOME_ROWS + 2}`, "J18"]};
+  return {build, FIXED_ROWS, INCOME_ROWS, MEAL_ROW: 5 + INCOME_ROWS + 3, WD, TITLES};
 })();
 
 /* ===== 👾 獨立版執行環境：Google 登入、試算表存資料、Google 日曆 =====
@@ -806,6 +807,8 @@ const LIFE_SCOPES = "openid email profile https://www.googleapis.com/auth/drive.
     const sv = k => { const x = (st.savings || []).find(v => v.id === k); return x ? Number(x.amount) || 0 : ""; };
     const data = [{range: `收支表!A6:C${5 + NI}`, values: inc}, {range: `收支表!B${LIFE_BOOK.MEAL_ROW}`, values: [[Number(st.meal?.daily) || 0]]},
       {range: `收支表!E6:G${5 + N}`, values: fx}, {range: "收支表!J5:J7", values: [[sv("emg")], [sv("inv")], [sv("abroad")]]}];
+    for (const [k, [def, head, group]] of Object.entries(LIFE_BOOK.TITLES || {})){ const v = st.labels?.[k];
+      data.push({range: `收支表!${head}`, values: [[v ? "'" + v : def + "設定"]]}, {range: `收支表!${group}`, values: [[v ? "'" + v : def]]}); }
     const sig = JSON.stringify(data); if (sig === lsGet("backsig:" + id, null)) return;
     await api(`${SHEETS}/${id}/values:batchUpdate`, {method: "POST", body: JSON.stringify({valueInputOption: "USER_ENTERED", data})});
     lsSet("backsig:" + id, sig);
@@ -1376,7 +1379,23 @@ function toggleTask(taskId, date){
 
 /* ---------- shared bits ---------- */
 const app = document.getElementById("app");
-const sec = (title, body, right="", foot="") => `<section class="sec"><div class="sec-h"><span>${title}</span><b>${right}</b></div><div class="group">${body}</div></section>`;
+/* 自訂名稱：設定裡可以把區塊和分頁的名字改掉 */
+const LBL = k => { const v = S.settings?.labels?.[k]; return v ? esc(v) : k; };
+const LABEL_GROUPS = [
+  ["分頁", ["Home", "Tasks", "Supplies", "Finance", "Settings"]],
+  ["Home", ["Events", "Meals", "Expenses", "Due", "Check check", "Workout"]],
+  ["Tasks", ["Today", "Bills", "All Tasks"]],
+  ["Supplies", ["Restock", "To Buy", "By Category"]],
+  ["Finance", ["Overview", "This Month", "Credit Card", "Recurring", "Trend", "Spending", "Daily", "Installments"]],
+  ["Settings", ["Monthly Income", "Fixed Costs", "Savings", "Goals & Reminders", "Google Calendar", "Google Sheet", "Categories", "Custom Pages", "Expense Categories", "Backup"]]];
+function labelManager(){
+  const lab = S.settings?.labels || {};
+  return `<details class="adv" ${ui.openLabels ? "open" : ""} id="labelsBox"><summary>自訂名稱</summary><div class="card" style="padding:12px 16px">
+    ${LABEL_GROUPS.map(([g, keys]) => `<div class="sub-h" style="margin:8px 0 4px">${g}</div><div class="frow" style="grid-template-columns:repeat(auto-fill,minmax(170px,1fr))">
+      ${keys.map(k => `<label class="f">${k}<input id="lb-${k.replace(/\W/g, "_")}" type="text" maxlength="20" data-label="${esc(k)}" value="${esc(lab[k] || "")}" placeholder="${esc(k)}"></label>`).join("")}</div>`).join("")}
+    <p class="note" style="margin:10px 0 0">留空就用原本的名字。收入、固定支出、儲蓄、餐費的名字也會同步到 Google 試算表。</p></div></details>`;
+}
+const sec = (title, body, right="", foot="") => `<section class="sec"><div class="sec-h"><span>${LBL(title)}</span><b>${right}</b></div><div class="group">${body}</div></section>`;
 const row = (main, sub="", val="", extra="", attrs="") => `<div class="rowi ${extra}" ${attrs}><span class="main"><span class="t">${main}</span>${sub ? `<span class="s">${sub}</span>` : ""}</span>${val !== "" ? `<span class="v">${val}</span>` : ""}</div>`;
 
 let lastPushSig = "";
@@ -1388,8 +1407,9 @@ function maybePush(){
 const TAG_ICON = '<svg class="ti" viewBox="0 0 24 24" aria-hidden="true"><path d="M4.5 12.3V5.5a1 1 0 0 1 1-1h6.8l7.2 7.2a1 1 0 0 1 0 1.4l-6 6a1 1 0 0 1-1.4 0z"/><circle cx="8.6" cy="8.6" r="1.3"/></svg>';
 const HEART_ICON = '<svg class="ti" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19.5s-7-4.3-7-9.6A3.9 3.9 0 0 1 12 7.5a3.9 3.9 0 0 1 7 2.4c0 5.3-7 9.6-7 9.6z"/></svg>';
 function renderNav(){
-  const nav = document.getElementById("tabs"), sig = JSON.stringify(pages()); if (!nav || nav.dataset.sig === sig) return;
+  const nav = document.getElementById("tabs"), sig = JSON.stringify([pages(), S.settings?.labels || {}]); if (!nav || nav.dataset.sig === sig) return;
   nav.dataset.sig = sig; nav.querySelectorAll("a[data-page]").forEach(a => a.remove());
+  for (const a of nav.querySelectorAll("a[href]")){ const k = a.getAttribute("href").slice(1), base = {home:"Home", tasks:"Tasks", supplies:"Supplies", finance:"Finance", settings:"Settings"}[k]; if (base){ const sp = a.querySelector("span"); if (sp) sp.textContent = S.settings?.labels?.[base] || base; } }
   const before = nav.querySelector('a[href="#settings"]');
   for (const pg of pages()){ const a = document.createElement("a"); a.href = "#" + pageKey(pg); a.dataset.page = pg.id; a.innerHTML = (pg.id === "health" ? HEART_ICON : TAG_ICON) + `<span>${esc(pg.name)}</span>`; nav.insertBefore(a, before); }
   if (S.settings?.appName){ document.title = S.settings.appName; const br = document.querySelector(".brand"); if (br) br.textContent = "👾 " + S.settings.appName; }
@@ -1674,7 +1694,7 @@ function workoutSec(d){
       g.goal === "week" ? `<span class="pips" aria-label="本週 ${g.week} 次">${[...Array(Math.max(g.n, g.week))].map((_,i) => `<span class="pip ${i < g.week ? "on" : ""}"></span>`).join("")}</span>` : g.last ? `上次 ${mdEn(parseISO(g.last.date))}` : "")).join("")
     + logged.map(w => `<div class="rowi" data-item="workout" data-ym="${w.date.slice(0,7)}" data-id="${w.id}"><span class="main"><span class="t">${esc(actName(w.type))}</span><span class="s">已記錄・${mdEn(d)}</span></span></div>`).join("")
     + `<div class="logbtns">${acts().map(a => `<button class="btn" data-act="logWorkout" data-type="${esc(a.id)}" data-d="${key}">+ ${esc(a.name)}</button>`).join("")}</div>`;
-  return sec(customActs() ? "Check-in" : "Workout", body, `${mdEn(st.ws)} – ${mdEn(st.we)}`);
+  return sec(customActs() ? "Check check" : "Workout", body, `${mdEn(st.ws)} – ${mdEn(st.we)}`);
 }
 
 function spendForm(dateKey, scope){
@@ -1731,7 +1751,7 @@ function renderMonth(c){
       ${sp ? `<span class="sp">${money(sp)}</span>` : ""}</div>`;
   }
   const actNote = actGroups().map(g => { const ids = g.acts.map(a => a.id); return `${g.acts.map(a => a.name).join(" / ")} ${allWorkouts().filter(x => ids.includes(x.type) && x.date.startsWith(ym)).length} 次`; }).join("・");
-  return `<section class="sec"><div class="sec-h"><span>${ymEn(ym)}</span><span class="legend" style="text-transform:none"><span style="color:var(--accent)">Tasks</span><span style="color:var(--ink)">Work</span><span style="color:var(--teal)">Income</span>${acts().length ? `<span style="color:var(--indigo)">${customActs() ? "Check-in" : "Workout"}</span>` : ""}<span style="color:var(--orange)">Supplies</span>${pages().length ? `<span style="color:var(--green)">${esc(careLabel())}</span>` : ""}</span></div>
+  return `<section class="sec"><div class="sec-h"><span>${ymEn(ym)}</span><span class="legend" style="text-transform:none"><span style="color:var(--accent)">Tasks</span><span style="color:var(--ink)">Work</span><span style="color:var(--teal)">Income</span>${acts().length ? `<span style="color:var(--indigo)">${customActs() ? "Check check" : "Workout"}</span>` : ""}<span style="color:var(--orange)">Supplies</span>${pages().length ? `<span style="color:var(--green)">${esc(careLabel())}</span>` : ""}</span></div>
     <div class="group"><div class="cal">${cells}</div></div>
     <div class="sec-f">${actNote ? `本月 ${esc(actNote)}　` : ""}${gcalNote()}　${gpushNote()}</div></section>`;
 }
@@ -1746,7 +1766,7 @@ function renderTasks(){
     return `<div class="rowi" data-item="task" data-id="${t.id}"><span class="main"><span class="t">${esc(t.name)}</span><span class="s">${ruleText(t)}${t.note ? `・${esc(t.note)}` : ""}</span></span>
       <span class="datepill ${doneToday ? "done" : iso(next||t0) === iso(t0) ? "today" : ""}">${nx}</span><span class="v" aria-hidden="true">›</span></div>`; }).join("");
   const ws = weekStart(t0), wk = [...Array(7)].flatMap((_,i) => tasksOn(addDays(ws,i)));
-  return `<div class="large"><div><h1>Tasks</h1></div><button class="btn" data-act="newTask">新增任務</button></div>
+  return `<div class="large"><div><h1>${LBL("Tasks")}</h1></div><button class="btn" data-act="newTask">新增任務</button></div>
     <div class="widgets" style="grid-template-columns:repeat(3,minmax(0,1fr))">
       <div class="wdg"><span class="k">今天</span><span class="n">${tasksOn(t0).filter(x=>x.done).length}/${tasksOn(t0).length}</span><span class="x">已完成</span></div>
       <div class="wdg"><span class="k">本週</span><span class="n">${wk.filter(x=>x.done).length}/${wk.length}</span><span class="x">已完成</span></div>
@@ -1764,10 +1784,10 @@ function renderTasks(){
 /* ---------- finance ---------- */
 function renderFinance(){
   const s = S.settings;
-  if (!s) return `<div class="large"><h1>Finance</h1></div><p class="empty">還沒有財務資料。</p><div><button class="btn" data-act="initSettings">建立空白設定</button></div>`;
+  if (!s) return `<div class="large"><h1>${LBL("Finance")}</h1></div><p class="empty">還沒有財務資料。</p><div><button class="btn" data-act="initSettings">建立空白設定</button></div>`;
   if (!ui.month) ui.month = effYm(ymOf(new Date()));
   const ym = ui.month = effYm(ui.month), f = fin(ym);
-  return `<div class="large"><div><h1>Finance</h1></div>
+  return `<div class="large"><div><h1>${LBL("Finance")}</h1></div>
     <div class="datenav"><button class="link big" data-act="month" data-n="-1" aria-label="上個月" ${ym <= startYm() ? "disabled" : ""}>‹</button><strong style="min-width:9em">${ymEn(ym)}</strong><button class="link big" data-act="month" data-n="1" aria-label="下個月">›</button></div></div>
   ${overviewSec(ym, f)}
   ${billsSec(ym)}
@@ -2035,10 +2055,10 @@ function guideSec(){
   </div></details>`;
 }
 function renderSettingsPage(){
-  if (!S.settings) return `<div class="large"><h1>Settings</h1></div><p class="empty">還沒有設定資料。</p><div><button class="btn" data-act="initSettings">建立空白設定</button></div>`;
+  if (!S.settings) return `<div class="large"><h1>${LBL("Settings")}</h1></div><p class="empty">還沒有設定資料。</p><div><button class="btn" data-act="initSettings">建立空白設定</button></div>`;
   if (!ui.setMonth) ui.setMonth = effYm(ymOf(new Date()));
   const ym = ui.setMonth = effYm(ui.setMonth);
-  return `${window.LIFE?.accountSec?.() || ""}${guideSec()}<div class="large"><div><h1>Settings</h1></div>
+  return `${window.LIFE?.accountSec?.() || ""}${guideSec()}<div class="large"><div><h1>${LBL("Settings")}</h1></div>
     <div class="datenav"><button class="link big" data-act="setMonth" data-n="-1" aria-label="上個月" ${ym <= startYm() ? "disabled" : ""}>‹</button><strong style="min-width:9em">${ymEn(ym)}</strong><button class="link big" data-act="setMonth" data-n="1" aria-label="下個月">›</button></div></div>
     ${sec("Google Sheet", `<div class="pad">
       <label class="toggle"><input id="s-sheet" type="checkbox" data-sheet ${S.settings.sheetSyncOff ? "" : "checked"}><span>從你的 Google 試算表「收支表」同步每月薪資、年終與儲蓄</span></label>
@@ -2055,9 +2075,9 @@ function saveAmt(x, ym, s = S.settings){
 }
 function renderSettings(ym){
   const s = S.settings, t = s.tutor, g = goals();
-  const OPEN = t2 => `<section class="sec"><div class="sec-h"><span>${t2}</span></div><div class="group"><div class="pad">`, CLOSE = `</div></div></section>`;
+  const OPEN = t2 => `<section class="sec"><div class="sec-h"><span>${LBL(t2)}</span></div><div class="group"><div class="pad">`, CLOSE = `</div></div></section>`;
   if (!Array.isArray(s.incomes)) s.incomes = clone(incomesOf(s));
-  return `<div class="grid2 settings-grid">${OPEN(`Monthly Income・${ymEn(ym)}`)}
+  return `<div class="grid2 settings-grid">${OPEN(`${LBL("Monthly Income")}・${ymEn(ym)}`)}
     <div class="frow">
       <label class="f">實領薪資<input id="s-sal" type="number" data-bind="salaryOverride.${ym}" value="${s.salaryOverride?.[ym] ?? ""}" placeholder="${s.salary?.[ym] ?? ""}"></label>
       <label class="f">年終實領<input id="s-bonus" type="number" data-bind="bonus.${ym}" value="${s.bonus?.[ym] ?? ""}"></label>
@@ -2099,7 +2119,7 @@ function renderSettings(ym){
       <label class="f">美元匯率<input id="s-usd" type="number" step="0.01" data-bind="fx.usd" value="${s.fx?.usd ?? ""}"></label>
       <label class="f">海外刷卡手續費（%）<input id="s-fee" type="number" step="0.1" data-bind="fx.feePct" value="${((s.fx?.fee||0)*100).toFixed(1)}"></label>
     </div>
-    ${CLOSE}</div><div class="grid2 settings-grid">${OPEN(`Savings・${ymEn(ym)}`)}
+    ${CLOSE}</div><div class="grid2 settings-grid">${OPEN(`${LBL("Savings")}・${ymEn(ym)}`)}
     ${(s.savings||[]).map((x,i) => { const own = s.savingsMonth?.[ym]?.[x.id], sh = s.savingsSheet?.[ym]?.[x.id];
       return `<div class="frow sv-row">
       <label class="f">名稱<input id="sv-n-${i}" type="text" data-bind="savings.${i}.name" data-type="text" value="${esc(x.name)}"></label>
@@ -2144,6 +2164,7 @@ function renderSettings(ym){
     ${catManager()}
     ${pageManager()}
     ${spendCatSection()}
+    ${labelManager()}
     ${OPEN("Backup")}<div><button class="link" data-act="copyBackup">複製全部資料</button></div>${CLOSE}`;
 }
 
@@ -2241,7 +2262,7 @@ function renderSupplies(){
     listBody = grp("該補了", now) + grp("一個月內", soon) + grp("之後", later);
   }
   const seg = `<div class="seg sm" role="group" aria-label="排序"><button data-act="supView" data-v="date" aria-pressed="${view === "date"}">日期</button><button data-act="supView" data-v="cat" aria-pressed="${view === "cat"}">類別</button></div>`;
-  return `<div class="large"><div><h1>Supplies</h1></div><button class="btn" data-act="newItem" data-col="supplies">新增品項</button></div>
+  return `<div class="large"><div><h1>${LBL("Supplies")}</h1></div><button class="btn" data-act="newItem" data-col="supplies">新增品項</button></div>
     ${sec("Overview", ovTiles([
       {k: "該補了", v: now.length, x: now.length ? now.slice(0,2).map(i => esc(i.it.name)).join("、") + (now.length > 2 ? "…" : "") : "都還夠", neg: now.some(i => i.x.days < 0)},
       {k: "待買", v: todo.length, x: todo.length ? `約 ${money(sum(todo, x => Number(x.price)||0))}` : "清單是空的"},
@@ -2345,7 +2366,7 @@ function openBuy(id){
 }
 function catManager(){
   const cats = supplyCats();
-  return `<section class="sec"><div class="sec-h"><span>Categories</span><b>${cats.length} 個類別</b></div><div class="group">
+  return `<section class="sec"><div class="sec-h"><span>${LBL("Categories")}</span><b>${cats.length} 個類別</b></div><div class="group">
     ${cats.map((c,i) => `<div class="rowi catrow"><span class="main"><input id="cat-${i}" type="text" data-cat="${i}" value="${esc(c)}" aria-label="類別名稱"></span>
       <span class="v">${S.supplies.filter(x => x.cat === c).length} 項</span>
       <button class="link red" data-act="delCat" data-i="${i}">刪除</button></div>`).join("")}
@@ -2354,7 +2375,7 @@ function catManager(){
 }
 function actManager(){
   const s = S.settings; if (!Array.isArray(s.activities)) s.activities = clone(actsLegacy());
-  return `<section class="sec"><div class="sec-h"><span>Check-in</span><b>${s.activities.length} 項</b></div><div class="group"><div class="pad">
+  return `<section class="sec"><div class="sec-h"><span>${LBL("Check check")}</span><b>${s.activities.length} 項</b></div><div class="group"><div class="pad">
     <div class="tablewrap"><table class="edit"><thead><tr><th>名稱</th><th>目標</th><th>次數／天數</th><th>每次花費</th><th></th></tr></thead><tbody>
     ${s.activities.map((a,i) => `<tr>
       <td><input id="ac-n-${i}" type="text" data-bind="activities.${i}.name" data-type="text" value="${esc(a.name)}"></td>
@@ -2369,7 +2390,7 @@ function actManager(){
 const MAX_PAGES = 3;
 function pageManager(){
   const ps = pages();
-  return `<section class="sec"><div class="sec-h"><span>Custom Pages</span><b>${ps.length} / ${MAX_PAGES}</b></div><div class="group">
+  return `<section class="sec"><div class="sec-h"><span>${LBL("Custom Pages")}</span><b>${ps.length} / ${MAX_PAGES}</b></div><div class="group">
     ${ps.map((pg,i) => `<div class="rowi catrow"><span class="main"><input id="pg-${i}" type="text" data-pagename="${i}" value="${esc(pg.name)}" aria-label="分頁名稱"></span>
       <span class="v">${S.health.filter(x => pageOf(x) === pg.id).length} 項</span>
       <button class="link red" data-act="delPage" data-i="${i}">刪除</button></div>`).join("")}
@@ -2378,7 +2399,7 @@ function pageManager(){
 }
 function spendCatSection(){
   const cats = spendCats();
-  return `<section class="sec"><div class="sec-h"><span>Expense Categories</span><b>${cats.length} 個類別</b></div><div class="group">
+  return `<section class="sec"><div class="sec-h"><span>${LBL("Expense Categories")}</span><b>${cats.length} 個類別</b></div><div class="group">
     ${cats.map((c,i) => `<div class="rowi"><span class="main"><span class="t">${esc(c)}</span></span><button class="link red" data-act="delSpendCat" data-i="${i}">刪除</button></div>`).join("")}
     <form class="rowi" data-form="spendcat2"><span class="main"><input id="sc2-new" name="name" type="text" placeholder="新類別，例：寵物"></span><button class="link" type="submit">新增</button></form>
   </div><div class="sec-f">支出表單和快速新增會使用這些類別。刪除類別不影響已記錄的支出。</div></section>`;
@@ -2726,6 +2747,11 @@ app.addEventListener("change", e => {
   if (el.dataset.sheet !== undefined && S.settings){ S.settings.sheetSyncOff = !el.checked; saveSettings(); if (el.checked) sheetSync(true); return; }
   if (el.dataset.cardon !== undefined && S.settings){ if (el.checked) delete S.settings.cardOff; else S.settings.cardOff = true; ui.openSettings = true; return saveSettings(); }
   if (el.dataset.gsync !== undefined && S.settings){ S.settings.gsyncOff = !el.checked; ui.openSettings = true; saveSettings(); if (el.checked) schedulePush(); return; }
+  if (el.dataset.label !== undefined && S.settings){
+    const k = el.dataset.label, v = el.value.trim(); S.settings.labels ||= {};
+    if (v && v !== k) S.settings.labels[k] = v; else delete S.settings.labels[k];
+    ui.openSettings = true; ui.openLabels = true; return saveSettings();
+  }
   if (el.dataset.pagename !== undefined && S.settings){
     const ps = clone(pages()), i = Number(el.dataset.pagename), nv = el.value.trim(); if (!ps[i]) return;
     if (!nv || nv === ps[i].name) { el.value = ps[i].name; return; }
@@ -2770,7 +2796,7 @@ dlg.addEventListener("input", e => {
   if (e.target === N && N.value) L.value = iso(addDays(parseISO(N.value), -c));
   else if ((e.target === L || e.target === C) && L.value) N.value = iso(addDays(parseISO(L.value), c));
 });
-app.addEventListener("toggle", e => { if (e.target.id === "settingsBox") ui.openSettings = e.target.open; }, true);
+app.addEventListener("toggle", e => { if (e.target.id === "settingsBox") ui.openSettings = e.target.open; if (e.target.id === "labelsBox") ui.openLabels = e.target.open; }, true);
 
 app.addEventListener("submit", e => {
   const fm = e.target;
@@ -3182,21 +3208,27 @@ function parseSheet(text){
   out.saveBase = {emg: find(/^緊急預備金／月/), inv: find(/^定期定額投資／月/), abroad: find(/^其他儲蓄／月/)};
   { const hit = rows.find(r => r[0] === "家教上課星期"); out.tutorDays = hit ? String(hit[1] || "") : null; }
   // 公版試算表的清單：「固定支出設定」「收入設定」下面一列是「名稱｜金額｜星期」
-  const listBlock = (label, max) => {
-    for (let i = 0; i + 1 < rows.length; i++){
-      const ci = rows[i].indexOf(label); if (ci < 0 || rows[i+1][ci] !== "名稱" || rows[i+1][ci+1] !== "金額") continue;
+  const listAt = (ci, max) => {
+    for (let i = 1; i < rows.length; i++){
+      if (rows[i][ci] !== "名稱" || rows[i][ci+1] !== "金額") continue;
       const list = [];
-      for (let k = i + 2; k < rows.length && k < i + 2 + max; k++){
-        const r = rows[k], name = String(r[ci] || "").trim(); if (/設定$|^(月份|收入)$/.test(name)) break;
+      for (let k = i + 1; k < rows.length && k < i + 1 + max; k++){
+        const r = rows[k], name = String(r[ci] || "").trim(); if (/^(月份|收入)$/.test(name)) break;
         if (name) list.push({name, amount: num(r[ci+1]) ?? 0, days: String(r[ci+2] || "")});
       }
-      return list;
+      return {list, title: String(rows[i-1][ci] || "").trim()};
     }
     return null;
   };
-  out.fixedRows = listBlock("固定支出設定", 10); out.incomeRows = listBlock("收入設定", 5);
+  { const fx = listAt(4, 10), inc = listAt(0, 5);
+    out.fixedRows = fx?.list || null; out.incomeRows = inc?.list || null;
+    if (fx){ const t = {"Fixed Costs": fx.title, "Monthly Income": inc?.title};
+      const sv = rows.findIndex(r => /^緊急預備金/.test(r[8] || "")); if (sv > 0) t["Savings"] = String(rows[sv-1][8] || "").trim();
+      const ml = rows.findIndex(r => r[0] === "餐費每日"); if (ml > 0) t["Meals"] = String(rows[ml-1][0] || "").trim();
+      out.titles = t; } }
   return out;
 }
+const SHEET_TITLE = {"Monthly Income": "收入", "Fixed Costs": "固定支出", "Savings": "投資儲蓄", "Meals": "日常花費"};
 function applySheet(d){
   if (!S.settings || !d) return 0;
   const st = clone(S.settings); let n = 0;
@@ -3235,6 +3267,10 @@ function applySheet(d){
     if (JSON.stringify(names) !== JSON.stringify(st[namesKey] || [])){ st[namesKey] = names; n++; }
   };
   if (d.fixedRows) syncList("fixed", "sheetFixedNames", d.fixedRows);
+  if (d.titles){ st.labels ||= {};
+    for (const [k, raw] of Object.entries(d.titles)){ const v = String(raw || "").replace(/\s*設定$/, "").trim(), def = SHEET_TITLE[k]; if (!v || !def) continue;
+      const cur = st.labels[k] || def; if (v === cur) continue;
+      if (v === def) delete st.labels[k]; else st.labels[k] = v; n++; } }
   if (d.incomeRows){ if (!Array.isArray(st.incomes)) st.incomes = clone(incomesOf(st)); syncList("incomes", "sheetIncomeNames", d.incomeRows); }
   // 舊版試算表（家教每堂收入、停課堂數）同步到收入清單裡的家教
   if (Array.isArray(st.incomes)){ const ti = st.incomes.find(x => x.id === "tutor"), per = Number(st.tutor.perDay) || 1;

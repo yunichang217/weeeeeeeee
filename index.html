@@ -2,7 +2,7 @@
 <html lang="zh-Hant">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <title>👾</title>
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#e6e3df">
@@ -338,6 +338,9 @@ label.f{display:grid;gap:4px;font-size:.76rem;color:var(--muted)}
 input[type=text],input[type=url],input[type=number],input[type=date],input[type=month],select{
   border:0;background:var(--fill);border-radius:9px;padding:8px 10px;min-width:0;width:100%;font-size:.92rem}
 input::placeholder{color:var(--muted)}
+html{touch-action:manipulation;-webkit-text-size-adjust:100%;text-size-adjust:100%}
+.grid2 > *, .sec, .group{min-width:0}
+@media (pointer:coarse){input[type=text],input[type=url],input[type=number],input[type=date],input[type=month],input[type=email],select,textarea{font-size:16px}}
 .frow{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px;align-items:end}
 .frow.sv-row{grid-template-columns:1.4fr 1fr 1fr auto}
 .mealform{display:grid;grid-template-columns:1fr 1.3fr;gap:8px;align-items:center}
@@ -416,7 +419,7 @@ form:has(input[name=inst]:checked) .instn{display:inline-flex}
 .prog span{display:block;height:100%;background:var(--accent)}
 .pills input:focus-visible+span{outline:2px solid var(--accent);outline-offset:2px}
 .wds{display:flex;gap:4px;flex-wrap:wrap}
-.wds label{cursor:pointer}
+.wds label{cursor:pointer;position:relative}
 .wds input{position:absolute;opacity:0;pointer-events:none}
 .wds span{display:inline-grid;place-items:center;min-width:30px;height:30px;padding:0 6px;border-radius:99px;background:var(--fill);font-size:.8rem}
 .wds input:checked+span{background:var(--accent);color:#fff}
@@ -484,6 +487,28 @@ dialog form{display:grid;gap:14px;padding:0 0 16px}
   details.settings>summary:hover{background:var(--fill)}
   .iconbtn:hover{background:color-mix(in srgb,var(--red) 12%,transparent);color:var(--red)}
   .pill-add:hover{background:var(--fill);color:var(--ink);border-style:solid}
+}
+@media (max-width:640px){
+  .tablewrap{overflow:visible;margin:0;padding:0}
+  table.edit,table.edit tbody{display:block;min-width:0;width:100%}
+  table.edit thead{display:none}
+  table.edit tr{display:grid;grid-template-columns:1fr 1fr;gap:10px 10px;padding:14px 0;border-top:.5px solid var(--sep)}
+  table.edit tr:first-child{border-top:0;padding-top:4px}
+  table.edit td{display:block;padding:0;border:0;min-width:0}
+  table.edit td::before{content:attr(data-label);display:block;font-size:.72rem;color:var(--muted);margin-bottom:4px}
+  table.edit td:first-child,table.edit td.wide{grid-column:1/-1}
+  table.edit td.act{grid-column:2;align-self:center}
+  table.edit td input,table.edit td select{width:100% !important;min-width:0 !important}
+  table.edit td.na{display:none}
+  table.edit td.chk{display:flex;align-items:center;gap:8px;align-self:center;grid-column:1}
+  table.edit td.chk::before{order:2;margin:0;font-size:.82rem;color:var(--ink)}
+  table.edit td.chk input{width:auto !important}
+  table.edit td.act{text-align:right}
+  table.edit td.act::before{display:none}
+  table.edit td .wds{flex-wrap:wrap;min-width:0}
+  table.edit td .note{font-size:.72rem}
+  .frow.sv-row{grid-template-columns:1.3fr 1fr 1fr;align-items:end}
+  .frow.sv-row > .link{grid-column:1/-1;justify-self:end}
 }
 
 #life-onboard{position:fixed;inset:0;z-index:80;background:var(--bg);overflow:auto;display:flex;justify-content:center;padding:max(28px,env(safe-area-inset-top)) 18px 40px}
@@ -674,7 +699,7 @@ const LIFE_BOOK = (() => {
     top.push(...title(ID.main, `每月收支規劃｜${span}`, "分成收入、固定支出、日常花費、投資儲蓄四塊；淺藍底為可修改的輸入，App 會跟這份試算表互相同步。實領薪資自動連到「薪資明細」。", 17));
     top.push([]);
     top.push(["收入設定", "", "", "", "固定支出設定", "", "", "", "投資儲蓄設定"]);
-    const sv = o.savings || [3000, 3000, 0];
+    const sv = o.savings || [0, 0, 0];
     const row3 = (list, r) => list[r] ? ["'" + list[r][0], list[r][1], list[r][2] || ""] : ["", "", ""];
     const iRow = r => r < INCOME_ROWS ? row3(incs, r) : ["", "", ""];
     top.push(["名稱", "金額", "計算星期", "", "名稱", "金額", "計費星期", "", "緊急預備金／月", sv[0]]);
@@ -998,15 +1023,15 @@ const LIFE_SCOPES = "openid email profile https://www.googleapis.com/auth/drive.
       fixed: SEED_FIXED.map(f => ({id: rid(), ...f})), activities: [], sheetLayout: 2, sheetFixedNames: SEED_FIXED.map(f => f.name), incomes: SEED_INCOMES.map(f => ({id: rid(), ...f})), sheetIncomeNames: SEED_INCOMES.map(f => f.name),
       fx: {usd: 32, fee: 0.015}, savings: [{id: "emg", name: "緊急預備金", amount: SEED_SAVINGS[0]}, {id: "inv", name: "定期定額投資", amount: SEED_SAVINGS[1]}, {id: "abroad", name: "其他儲蓄", amount: SEED_SAVINGS[2]}],
       goals: {gymPerWeek: 2, racketDays: 14}, leadSupply: 7, leadHealth: 14, meal: {daily: SEED_MEAL, cat: "餐飲"}, payday: 5, workoutPrice: {tennis: 0, pilates: 0}});
-    put("supplies/" + rid(), {name: "洗髮精（範例）", cat: "洗沐用品", cycle: 45, price: 299, inst: 1, last: dayIso(-40), note: "可以刪掉，換成你自己的"});
-    put("supplies/" + rid(), {name: "衛生紙（範例）", cat: "日用品", cycle: 30, price: 199, inst: 1, last: dayIso(-10), note: ""});
+    put("supplies/" + rid(), {name: "洗髮精（範例）", cat: "洗沐用品", cycle: 45, price: 0, inst: 1, last: dayIso(-40), note: "可以刪掉，換成你自己的"});
+    put("supplies/" + rid(), {name: "衛生紙（範例）", cat: "日用品", cycle: 30, price: 0, inst: 1, last: dayIso(-10), note: ""});
     put("tasks/" + rid(), {name: "洗衣服（範例）", rule: {type: "weekly", weekdays: [6]}, note: "", since: dayIso(0)});
     put("tasks/" + rid(), {name: "倒垃圾（範例）", rule: {type: "weekly", weekdays: [1, 4]}, note: "", since: dayIso(0)});
-    put("shopping/" + rid(), {name: "洗碗精（範例）", qty: 1, price: 89, cat: "日用品", done: false, created: new Date().toISOString(), note: ""});
+    put("shopping/" + rid(), {name: "洗碗精（範例）", qty: 1, price: 0, cat: "日用品", done: false, created: new Date().toISOString(), note: ""});
   }
-  const SEED_FIXED = [{name: "手機費（範例）", group: "電話", kind: "monthly", amount: 499}, {name: "捷運（範例）", group: "交通", kind: "weekday", amount: 60, weekdays: [1, 2, 3, 4, 5]},
-    {name: "串流訂閱（範例）", kind: "monthly", amount: 270, noList: true}];
-  const SEED_SAVINGS = [3000, 3000, 0], SEED_MEAL = 250, SEED_INCOMES = [{name: "打工（範例）", kind: "weekday", amount: 0, weekdays: [6]}];
+  const SEED_FIXED = [{name: "手機費（範例）", group: "電話", kind: "monthly", amount: 0}, {name: "捷運（範例）", group: "交通", kind: "weekday", amount: 0, weekdays: [1, 2, 3, 4, 5]},
+    {name: "串流訂閱（範例）", kind: "monthly", amount: 0, noList: true}];
+  const SEED_SAVINGS = [0, 0, 0], SEED_MEAL = 0, SEED_INCOMES = [{name: "打工（範例）", kind: "weekday", amount: 0, weekdays: [6]}];
   const days3 = f => [f.name, f.amount, f.kind === "weekday" ? f.weekdays.map(w => "日一二三四五六"[w]).join("") : ""];
   async function createSheet(appName){
     const book = LIFE_BOOK.build({startYm: ymNow(), fixed: SEED_FIXED.map(days3), incomes: SEED_INCOMES.map(days3), savings: SEED_SAVINGS, mealDaily: SEED_MEAL});
@@ -1522,6 +1547,19 @@ function renderNav(){
   for (const pg of pages()){ const a = document.createElement("a"); a.href = "#" + pageKey(pg); a.dataset.page = pg.id; a.innerHTML = (pg.id === "health" ? HEART_ICON : TAG_ICON) + `<span>${esc(pg.name)}</span>`; nav.insertBefore(a, before); }
   if (S.settings?.appName){ const br = document.querySelector(".brand"); if (br) br.textContent = "👾 " + S.settings.appName; }
 }
+function labelTables(){
+  for (const t of app.querySelectorAll("table.edit")){
+    const hs = [...t.querySelectorAll("thead th")].map(th => th.textContent.trim());
+    for (const tr of t.querySelectorAll("tbody tr")) [...tr.children].forEach((td, i) => {
+      td.dataset.label = hs[i] || "";
+      if (td.querySelector(".wds")) td.classList.add("wide");
+      else if (td.querySelector("[data-act^=del]")) td.classList.add("act");
+      else if (td.querySelector('input[type=checkbox]') && !td.querySelector('input:not([type=checkbox]),select')) td.classList.add("chk");
+      else if (!td.querySelector("input,select,button") && td.textContent.trim() === "—") td.classList.add("na");
+    });
+  }
+}
+document.addEventListener("gesturestart", e => e.preventDefault());
 function render(){
   maybePush();
   applyTheme();
@@ -1533,6 +1571,7 @@ function render(){
   sheetSync();
   const pg = pageFromTab(ui.tab);
   app.innerHTML = pg ? renderHealth(pg.id) : (R[ui.tab] || renderHome)();
+  labelTables();
   enhanceRows();
   if (keepId) document.getElementById(keepId)?.focus();
 }

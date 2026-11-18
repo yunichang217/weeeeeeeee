@@ -12,64 +12,89 @@
 <meta name="apple-mobile-web-app-title" content="👾">
 <link rel="apple-touch-icon" href="icon-192.png">
 <link rel="icon" href="icon-192.png">
-<script>try{var t=localStorage.getItem("lifeapp:theme");if(t)document.documentElement.dataset.theme=JSON.parse(t)}catch(e){}</script>
+<script>try{var t=localStorage.getItem("lifeapp:theme"),d=document.documentElement;if(t)d.dataset.theme=JSON.parse(t);var v=JSON.parse(localStorage.getItem("lifeapp:themeVars")||"null");if(v)for(var k in v)d.style.setProperty(k,v[k])}catch(e){}</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Huninn&display=swap" rel="stylesheet">
 <style>
 :root{
   /* layout: iOS-style grouped lists — gray canvas, white rounded groups, small grey section headers, one accent; max 1000px, two columns on desktop */
-  --bg:#e6e3df;
-  --card:#fbfaf8;
-  --ink:#3b3531;
-  --muted:#9a9089;
+  --bg:#e2dfdc;
+  --card:#f6f5f4;
+  --ink:#3d3835;
+  --muted:#98908b;
   --sep:rgba(90,75,65,.14);
-  --fill:#ebe7e2;
-  --accent:#8c7b70;   /* taupe */
-  --green:#8d9a84;    /* sage */
-  --orange:#b9996b;   /* oat */
-  --red:#b9837a;      /* dusty rose */
-  --indigo:#9a8796;   /* mauve */
-  --teal:#8b9599;     /* stone grey */
+  --fill:#e6e3df;
+  --accent:#897c74;   /* taupe */
+  --green:#8d9786;    /* sage */
+  --orange:#b09774;   /* oat */
+  --red:#b18781;      /* dusty rose */
+  --indigo:#978994;   /* mauve */
+  --teal:#8c9497;     /* stone grey */
   --font:"Huninn","jf open 粉圓 2.1","Arial Rounded MT Bold","PingFang TC",sans-serif;
   color-scheme:light;
 }
 @media (prefers-color-scheme: dark){
   :root:not([data-theme]){
-    --bg:#1d1a18; --card:#282421; --ink:#ede6de; --muted:#a2988f; --sep:rgba(200,185,170,.16); --fill:#34302c;
-    --accent:#c2b0a3; --green:#a9b59f; --orange:#d2b688; --red:#d3a097; --indigo:#bba7b5; --teal:#a9b2b6;
+    --bg:#211e1d; --card:#2b2826; --ink:#e7e2dc; --muted:#9f9791; --sep:rgba(200,185,170,.16); --fill:#373330;
+    --accent:#bdafa5; --green:#a8b1a0; --orange:#c8b28f; --red:#caa39c; --indigo:#b7a8b2; --teal:#a9b0b3;
     color-scheme:dark;
   }
 }
 :root[data-theme="dark"]{
-  --bg:#1d1a18; --card:#282421; --ink:#ede6de; --muted:#a2988f; --sep:rgba(200,185,170,.16); --fill:#34302c;
-  --accent:#c2b0a3; --green:#a9b59f; --orange:#d2b688; --red:#d3a097; --indigo:#bba7b5; --teal:#a9b2b6;
+  --bg:#211e1d; --card:#2b2826; --ink:#e7e2dc; --muted:#9f9791; --sep:rgba(200,185,170,.16); --fill:#373330;
+  --accent:#bdafa5; --green:#a8b1a0; --orange:#c8b28f; --red:#caa39c; --indigo:#b7a8b2; --teal:#a9b0b3;
   color-scheme:dark;
 }
 /* ---------- 主題配色 ---------- */
 :root[data-theme="peach"]{
-  --bg:#fdeee6; --card:#fffaf6; --ink:#4a2c28; --muted:#a67d74; --sep:rgba(140,70,50,.14); --fill:#f8e0d5;
-  --accent:#f2665a; --green:#33ad86; --orange:#f39a2b; --red:#e8505b; --indigo:#8b67f0; --teal:#22a9bd;
-  --c-fixed:#c0583f; --c-meal:#f29f3c; --c-save:#4f7fd9; --c-spend:#e0517a; --c-inc:#b49b94; color-scheme:light;
+  --bg:#f6ebe4; --card:#f9f6f2; --ink:#49322f; --muted:#a0807a; --sep:rgba(140,70,50,.14); --fill:#f0ded5;
+  --accent:#df746a; --green:#42a082; --orange:#db9742; --red:#d66169; --indigo:#9175df; --teal:#359dac;
+  --c-fixed:#b1614e; --c-meal:#dc9d50; --c-save:#5e83c8; --c-spend:#cf6180; --c-inc:#af9c97; color-scheme:light;
 }
 :root[data-theme="mint"]{
-  --bg:#e4f4ef; --card:#fbfffd; --ink:#21403a; --muted:#6e918a; --sep:rgba(40,100,90,.14); --fill:#d3ece5;
-  --accent:#0fae93; --green:#2ea86a; --orange:#eb9f2e; --red:#e8605e; --indigo:#6474f2; --teal:#1aa1c4;
-  --c-fixed:#3c7f74; --c-meal:#e8a23a; --c-save:#4a78d8; --c-spend:#e0627f; --c-inc:#93aaa4; color-scheme:light;
+  --bg:#e2eeea; --card:#f7faf8; --ink:#28403b; --muted:#728d88; --sep:rgba(40,100,90,.14); --fill:#d2e6e0;
+  --accent:#239d88; --green:#3d9b6b; --orange:#d59a44; --red:#d76e6d; --indigo:#737fe0; --teal:#2f96b1;
+  --c-fixed:#457970; --c-meal:#d39e4e; --c-save:#5a7dc7; --c-spend:#d07086; --c-inc:#95a6a2; color-scheme:light;
 }
 :root[data-theme="grape"]{
-  --bg:#16122a; --card:#211b3a; --ink:#f1ecff; --muted:#a39cc4; --sep:rgba(190,170,255,.16); --fill:#2c2550;
-  --accent:#b388ff; --green:#5fe0a0; --orange:#ffc25e; --red:#ff7aa8; --indigo:#8ab4ff; --teal:#5fd4e6;
-  --c-fixed:#a98bff; --c-meal:#ffc15e; --c-save:#6fb1ff; --c-spend:#ff7aa8; --c-inc:#7f78a6; color-scheme:dark;
+  --bg:#1c192b; --card:#27223a; --ink:#eeeaf8; --muted:#a49fbe; --sep:rgba(190,170,255,.16); --fill:#322d4e;
+  --accent:#b493ef; --green:#6dd09f; --orange:#ebbc6f; --red:#ed87ab; --indigo:#95b5ef; --teal:#6ec7d5;
+  --c-fixed:#ad96ef; --c-meal:#ebbb6f; --c-save:#7eb0ec; --c-spend:#ed87ab; --c-inc:#827da0; color-scheme:dark;
 }
-.themes{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;padding:14px 16px}
+/* Pantone 2026 */
+:root[data-theme="cloud"]{
+  --bg:#e2e0db; --card:#ebeae6; --ink:#434158; --muted:#8b888f; --sep:rgba(62,59,89,.13); --fill:#dddbd6;
+  --accent:#5d86b6; --green:#768d76; --orange:#da966d; --red:#b8685f; --indigo:#90719f; --teal:#679499;
+  --c-fixed:#705442; --c-meal:#da966d; --c-save:#6896be; --c-spend:#ce7c82; --c-inc:#82807c; color-scheme:light;
+}
+:root[data-theme="sycamore"]{
+  --bg:#212724; --card:#2b332f; --ink:#ede7de; --muted:#a1a39b; --sep:rgba(215,214,206,.15); --fill:#363e39;
+  --accent:#85b39d; --green:#a6a667; --orange:#da966d; --red:#ce7c82; --indigo:#c0afb1; --teal:#9db8d5;
+  --c-fixed:#c79788; --c-meal:#cbc172; --c-save:#9db8d5; --c-spend:#b28893; --c-inc:#82807c; color-scheme:dark;
+}
+:root[data-theme="clay"]{
+  --bg:#e5ded5; --card:#f2eee9; --ink:#413634; --muted:#988b81; --sep:rgba(97,46,53,.13); --fill:#e9e1d8;
+  --accent:#b67f61; --green:#768d76; --orange:#da966d; --red:#b8685f; --indigo:#b28893; --teal:#578588;
+  --c-fixed:#804b3e; --c-meal:#bbaf62; --c-save:#6896be; --c-spend:#ce7c82; --c-inc:#82807c; color-scheme:light;
+}
+.themes{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;padding:14px 16px;max-width:640px}
 .theme-btn{font:inherit;border:1.5px solid var(--sep);border-radius:14px;padding:10px;background:var(--card);color:var(--ink);cursor:pointer;display:grid;gap:8px;text-align:left}
 .theme-btn[aria-pressed="true"]{border-color:var(--accent);box-shadow:0 0 0 2px color-mix(in srgb,var(--accent) 35%,transparent)}
 .theme-sw{height:44px;border-radius:9px;display:flex;align-items:flex-end;gap:5px;padding:7px}
 .theme-sw span{width:14px;height:14px;border-radius:50%}
 .theme-sw b{flex:1;height:20px;border-radius:6px}
 .theme-btn .tn{font-size:.86rem;font-weight:600}
-.theme-btn .td{font-size:.74rem;color:var(--muted)}
+.cust{padding:4px 16px 16px;max-width:640px}
+.cust-slots{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.cslot{font:inherit;font-size:.82rem;display:flex;align-items:center;gap:7px;padding:7px 9px;border-radius:10px;border:1.5px solid var(--sep);background:var(--card);color:var(--ink);cursor:pointer;text-align:left}
+.cslot[aria-pressed="true"]{border-color:var(--accent);box-shadow:0 0 0 2px color-mix(in srgb,var(--accent) 30%,transparent)}
+.cdot{width:18px;height:18px;border-radius:50%;flex:none;box-shadow:inset 0 0 0 1px rgba(0,0,0,.15)}
+.psw-grid{display:grid;grid-template-columns:repeat(10,1fr);gap:6px;max-width:460px}
+.psw{aspect-ratio:1;border:0;border-radius:8px;cursor:pointer;box-shadow:inset 0 0 0 1px rgba(0,0,0,.12)}
+.psw[aria-pressed="true"]{outline:2.5px solid var(--ink);outline-offset:2px}
+#cust-color{width:40px;height:30px;padding:0;border:0;background:none;cursor:pointer}
+@media (max-width:560px){.cust-slots{grid-template-columns:repeat(3,1fr)}.psw-grid{grid-template-columns:repeat(8,1fr)}}
 *{box-sizing:border-box}
 html,body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--font);font-size:15.5px;line-height:1.5;letter-spacing:.02em;-webkit-font-smoothing:antialiased}
 body{font-variant-numeric:tabular-nums;padding-bottom:calc(84px + env(safe-area-inset-bottom))}
@@ -125,6 +150,13 @@ main{max-width:1000px;margin:0 auto;padding:8px 20px 24px;display:grid;gap:22px}
 .rowi .v.strong{color:var(--ink);font-weight:500}
 .rowi.total .main,.rowi.total .v{font-weight:600;color:var(--ink)}
 .rowi.tap{cursor:pointer}
+.setmenu{max-width:720px}
+.setrow{color:inherit;text-decoration:none;cursor:pointer;min-height:52px}
+.setrow .t{font-weight:500}
+.setrow .chev{color:var(--muted);font-size:1.3rem;line-height:1}
+@media (hover:hover){.setrow:hover{background:var(--hover, rgba(127,127,127,.08))}}
+.setback{display:inline-block;margin-bottom:6px;text-decoration:none;font-size:.95rem}
+.sethead h1{margin-top:0}
 .rowi.tap:active{background:var(--fill)}
 .empty{padding:14px 16px;color:var(--muted);font-size:.9rem}
 .datepill{display:inline-block;padding:3px 11px;border-radius:99px;background:var(--fill);color:var(--ink);font-size:.8rem;white-space:nowrap}
@@ -151,9 +183,9 @@ button.wdg.wbtn:focus-visible{outline:2px solid var(--accent);outline-offset:2px
 .wdg .wl .meter{margin-top:6px;grid-column:1/-1}
 .catd>summary{list-style:none;cursor:pointer;display:grid;grid-template-columns:1fr auto;gap:2px 8px;padding:12px 16px;border-bottom:.5px solid var(--sep)}
 .catd>summary::-webkit-details-marker{display:none}
-:root{--c-fixed:#7d5b4a;--c-meal:#c48a4a;--c-save:#5c76ab;--c-spend:#c26a83;--c-inc:#a39a92}
-@media (prefers-color-scheme: dark){:root:not([data-theme]){--c-fixed:#80635a;--c-meal:#bf9032;--c-save:#6c86c3;--c-spend:#cd7491;--c-inc:#7d746d}}
-:root[data-theme="dark"]{--c-fixed:#80635a;--c-meal:#bf9032;--c-save:#6c86c3;--c-spend:#cd7491;--c-inc:#7d746d}
+:root{--c-fixed:#795e51;--c-meal:#b68958;--c-save:#6579a2;--c-spend:#b77487;--c-inc:#a09993}
+@media (prefers-color-scheme: dark){:root:not([data-theme]){--c-fixed:#7d665f;--c-meal:#af8b43;--c-save:#7589b8;--c-spend:#c27d94;--c-inc:#7c7570}}
+:root[data-theme="dark"]{--c-fixed:#7d665f;--c-meal:#af8b43;--c-save:#7589b8;--c-spend:#c27d94;--c-inc:#7c7570}
 .hatch{background-image:repeating-linear-gradient(45deg,transparent 0 3px,rgba(255,255,255,.55) 3px 5px)!important}
 .ov-tiles{display:grid;grid-template-columns:repeat(4,1fr);gap:0;border-bottom:.5px solid var(--sep)}
 .ov-tile{all:unset;cursor:pointer;padding:14px 16px;display:grid;gap:2px;border-right:.5px solid var(--sep)}
@@ -399,6 +431,11 @@ details.settings[open]>summary{border-bottom:.5px solid var(--sep)}
 table.edit{border-collapse:collapse;width:100%;min-width:760px}
 table.edit th{font-size:.72rem;color:var(--muted);text-align:left;font-weight:500;padding:4px}
 table.edit td{padding:5px 4px;border-top:.5px solid var(--sep);vertical-align:middle}
+table.edit td input[type=text]{min-width:110px}
+table.edit td select{min-width:104px}
+table.edit td input[type=month]{min-width:130px}
+table.edit th{white-space:nowrap}
+table.edit td .wds{flex-wrap:nowrap;min-width:max-content}
 .catrow input{background:none;padding:4px 0;border-radius:0}
 .note{font-size:.8rem;color:var(--muted)}
 .wrow{display:grid;grid-template-columns:84px 1fr 96px;gap:12px;align-items:start;padding:11px 16px;position:relative}
@@ -1450,19 +1487,20 @@ function toggleTask(taskId, date){
 /* ---------- shared bits ---------- */
 const app = document.getElementById("app");
 /* 自訂名稱：設定裡可以把區塊和分頁的名字改掉 */
-const LBL = k => { const v = S.settings?.labels?.[k]; return v ? esc(v) : k; };
+const LABEL_SHOW = {"Categories（選單）": "Categories"};
+const LBL = k => { const v = S.settings?.labels?.[k]; return v ? esc(v) : (LABEL_SHOW[k] || k); };
 const LABEL_GROUPS = [
   ["分頁", ["Home", "Tasks", "Supplies", "Finance", "Settings"]],
   ["Home", ["Events", "Meals", "Expenses", "Due", "Check check", "Workout"]],
   ["Tasks", ["Today", "Bills", "All Tasks"]],
   ["Supplies", ["Restock", "To Buy", "By Category"]],
   ["Finance", ["Overview", "This Month", "Credit Card", "Recurring", "Trend", "Spending", "Daily", "Installments"]],
-  ["Settings", ["Theme", "Monthly Income", "Fixed Costs", "Savings", "Goals & Reminders", "Google Calendar", "Google Sheet", "Categories", "Custom Pages", "Expense Categories", "Backup"]]];
+  ["Settings", ["Money", "Reminders", "Categories（選單）", "Google", "Appearance", "Account", "Theme", "Monthly Income", "Fixed Costs", "Savings", "Goals & Reminders", "Google Calendar", "Google Sheet", "Categories", "Custom Pages", "Expense Categories", "Backup"]]];
 function labelManager(){
   const lab = S.settings?.labels || {};
   return `<details class="adv" ${ui.openLabels ? "open" : ""} id="labelsBox"><summary>自訂名稱</summary><div class="card" style="padding:12px 16px">
     ${LABEL_GROUPS.map(([g, keys]) => `<div class="sub-h" style="margin:8px 0 4px">${g}</div><div class="frow" style="grid-template-columns:repeat(auto-fill,minmax(170px,1fr))">
-      ${keys.map(k => `<label class="f">${k}<input id="lb-${k.replace(/\W/g, "_")}" type="text" maxlength="20" data-label="${esc(k)}" value="${esc(lab[k] || "")}" placeholder="${esc(k)}"></label>`).join("")}</div>`).join("")}
+      ${keys.map(k => `<label class="f">${k}<input id="lb-${k.replace(/\W/g, "_")}" type="text" maxlength="20" data-label="${esc(k)}" value="${esc(lab[k] || "")}" placeholder="${esc(LABEL_SHOW[k] || k)}"></label>`).join("")}</div>`).join("")}
     <p class="note" style="margin:10px 0 0">留空就用原本的名字。收入、固定支出、儲蓄、餐費的名字也會同步到 Google 試算表。</p></div></details>`;
 }
 const sec = (title, body, right="", foot="") => `<section class="sec"><div class="sec-h"><span>${LBL(title)}</span><b>${right}</b></div><div class="group">${body}</div></section>`;
@@ -2112,34 +2150,54 @@ function instSection(ym){
 function wdPicker(path, arr, idp){
   return `<div class="wds">${[1,2,3,4,5,6,0].map(w => `<label><input id="${idp}-${w}" type="checkbox" data-wd="${path}" value="${w}" ${(arr||[]).includes(w)?"checked":""}><span>${WD[w]}</span></label>`).join("")}</div>`;
 }
+const SET_TABS = [
+  ["money", "Money", () => "收入、固定支出、儲蓄、餐費"],
+  ["dates", "Reminders", () => `發薪日 ${S.settings.payday ?? 16} 號${cardOn() ? `・信用卡 ${cardClose()} 號結帳、${cardDue()} 號繳款` : ""}`],
+  ["pages", "Categories（選單）", () => `${LBL("Check check")}、補貨類別、自訂分頁、支出類別`],
+  ["google", "Google", () => `試算表 ${sheetStatus()}・日曆${S.settings.gsyncOff ? "已關閉" : "同步中"}`],
+  ["look", "Appearance", () => `主題：${(THEMES.find(t => t.id === (S.settings.theme || "")) || THEMES[0]).name}・自訂名稱`],
+  ["account", "Account", () => window.LIFE?.profile?.()?.email ? `${window.LIFE.profile().email}・備份` : "備份資料"]];
 function guideSec(){
-  return `<details class="adv guide" ${S.settings && Object.keys(S.spend||{}).length ? "" : "open"}><summary>使用說明</summary><div class="card" style="padding:14px 16px;line-height:1.8;font-size:.9rem">
+  return `<div class="card guide" style="padding:14px 16px;line-height:1.8;font-size:.9rem;max-width:760px">
     <p style="margin:0 0 8px"><b>第一次用</b>：名稱裡有「（範例）」的都是範例，可以直接改成自己的或刪掉（手機往左滑、電腦按右鍵）。</p>
-    <p style="margin:0 0 8px"><b>每月收入</b>：在下面的 Monthly Income 填實領薪資，月薪、打工、家教這些收入可以自己新增（每月固定或依星期天數計算），也會同步到試算表「收支表」的收入設定。</p>
+    <p style="margin:0 0 8px"><b>每月收入</b>：在 Settings → Money 填實領薪資，月薪、打工、家教這些收入可以自己新增（每月固定或依星期天數計算），也會同步到試算表「收支表」的收入設定。</p>
     <p style="margin:0 0 8px"><b>固定支出</b>：手機費、交通、訂閱等。勾「列入清單」的會出現在每月的預扣清單，付完打勾就好，不用再記帳。</p>
-    <p style="margin:0 0 8px"><b>發薪日和信用卡</b>：在下面的 Goals & Reminders 改成自己的發薪日、信用卡結帳日和繳款截止日；沒有用信用卡的話，把「有用信用卡」關掉就好。</p>
+    <p style="margin:0 0 8px"><b>發薪日和信用卡</b>：在 Settings → Reminders 改成自己的發薪日、信用卡結帳日和繳款截止日；沒有用信用卡的話，把「有用信用卡」關掉就好。</p>
     <p style="margin:0 0 8px"><b>記帳</b>：右下角「＋」可以記一筆支出、記餐費、加入待買。清單裡已經預扣的東西打勾就好。</p>
-    <p style="margin:0 0 8px"><b>自訂分頁</b>：在下面的 Custom Pages 新增像「Self care」「寵物」「汽車保養」的分頁，放定期要做的事，設定多久一次和金額，到期前會提醒、可以記預約時間。</p>
-    <p style="margin:0 0 8px"><b>Google 試算表</b>：上面「開啟試算表」可以打開。「收支表」可以改收入、固定支出、餐費和儲蓄，App 會跟著調整，在 App 改也會寫回去；「薪資明細」可以算勞健保和實領；「支出紀錄」是每一筆花費。</p>
+    <p style="margin:0 0 8px"><b>自訂分頁</b>：在 Settings → Categories 新增像「Self care」「寵物」「汽車保養」的分頁，放定期要做的事，設定多久一次和金額，到期前會提醒、可以記預約時間。</p>
+    <p style="margin:0 0 8px"><b>Google 試算表</b>：Settings → Account 裡的「開啟試算表」可以打開。「收支表」可以改收入、固定支出、餐費和儲蓄，App 會跟著調整，在 App 改也會寫回去；「薪資明細」可以算勞健保和實領；「支出紀錄」是每一筆花費。</p>
     <p style="margin:0 0 8px"><b>Google 日曆</b>：任務、補貨、預約和新增的行程會寫進 App 自己建立的日曆，手機的日曆 App 也看得到。</p>
     <p style="margin:0"><b>手機桌面</b>：iPhone 用 Safari 開，按分享 →「加入主畫面」；Android 用 Chrome 選「安裝應用程式」。</p>
-  </div></details>`;
+  </div>`;
 }
 function renderSettingsPage(){
   if (!S.settings) return `<div class="large"><h1>${LBL("Settings")}</h1></div><p class="empty">還沒有設定資料。</p><div><button class="btn" data-act="initSettings">建立空白設定</button></div>`;
   if (!ui.setMonth) ui.setMonth = effYm(ymOf(new Date()));
-  const ym = ui.setMonth = effYm(ui.setMonth);
-  return `${window.LIFE?.accountSec?.() || ""}${guideSec()}<div class="large"><div><h1>${LBL("Settings")}</h1></div>
-    <div class="datenav"><button class="link big" data-act="setMonth" data-n="-1" aria-label="上個月" ${ym <= startYm() ? "disabled" : ""}>‹</button><strong style="min-width:9em">${ymEn(ym)}</strong><button class="link big" data-act="setMonth" data-n="1" aria-label="下個月">›</button></div></div>
-    ${themeSec()}
-    ${sec("Google Sheet", `<div class="pad">
+  const ym = ui.setMonth = effYm(ui.setMonth), k = ui.setTab || "", tab = SET_TABS.find(t => t[0] === k);
+  const hasGuide = typeof guideSec === "function";
+  if (!tab && !(k === "guide" && hasGuide)){
+    return `<div class="large"><div><h1>${LBL("Settings")}</h1></div></div>
+    <div class="group setmenu">${SET_TABS.map(([id, t, sub]) => `<a class="rowi setrow" href="#settings/${id}"><span class="main"><span class="t">${LBL(t)}</span></span><span class="chev" aria-hidden="true">›</span></a>`).join("")}</div>
+    ${hasGuide ? `<div class="group setmenu" style="margin-top:14px"><a class="rowi setrow" href="#settings/guide"><span class="main"><span class="t">使用說明</span></span><span class="chev" aria-hidden="true">›</span></a></div>` : ""}`;
+  }
+  const head = (title, right = "") => `<div class="large sethead"><div><a class="link setback" href="#settings">‹ ${LBL("Settings")}</a><h1>${title}</h1></div>${right}</div>`;
+  if (k === "guide") return head("使用說明") + guideSec();
+  const P = renderSettings(ym);
+  const body = {
+    money: P.money,
+    dates: P.dates,
+    pages: P.pages,
+    google: `<div class="grid2 settings-grid">${SHEET_SEC()}${P.gcal}</div>`,
+    look: `${themeSec()}${P.labels}`,
+    account: `${window.LIFE?.accountSec?.() || ""}${P.backup}`}[k];
+  return head(LBL(tab[1]), k === "money" ? `<div class="datenav"><button class="link big" data-act="setMonth" data-n="-1" aria-label="上個月" ${ym <= startYm() ? "disabled" : ""}>‹</button><strong style="min-width:9em">${ymEn(ym)}</strong><button class="link big" data-act="setMonth" data-n="1" aria-label="下個月">›</button></div>` : "") + body;
+}
+const SHEET_SEC = () => sec("Google Sheet", `<div class="pad">
       <label class="toggle"><input id="s-sheet" type="checkbox" data-sheet ${S.settings.sheetSyncOff ? "" : "checked"}><span>從你的 Google 試算表「收支表」同步每月薪資、年終與儲蓄</span></label>
       <label class="f">試算表連結<input id="s-sheetlink" type="url" data-sheetlink value="https://docs.google.com/spreadsheets/d/${esc(sheetId())}/edit"></label>
       <div class="row between"><span class="tag ${S.sheetState === "ok" ? "ok" : S.sheetState === "off" ? "gray" : "warn"}">${esc(sheetStatus())}</span>
         <span class="row"><a class="link" href="https://docs.google.com/spreadsheets/d/${esc(sheetId())}/edit" target="_blank" rel="noopener">開啟試算表 ↗</a><button class="link" data-act="sheetNow">${S.sheetState === "approve" ? "允許並同步" : "立即同步"}</button></span></div>
-    </div>`)}
-    ${renderSettings(ym)}`;
-}
+    </div>`);
 function saveAmt(x, ym, s = S.settings){
   const m = s?.savingsMonth?.[ym]?.[x.id]; if (m != null && m !== "") return Number(m)||0;
   const sh = s?.savingsSheet?.[ym]?.[x.id]; if (sh != null) return Number(sh)||0;
@@ -2149,7 +2207,7 @@ function renderSettings(ym){
   const s = S.settings, t = s.tutor, g = goals();
   const OPEN = t2 => `<section class="sec"><div class="sec-h"><span>${LBL(t2)}</span></div><div class="group"><div class="pad">`, CLOSE = `</div></div></section>`;
   if (!Array.isArray(s.incomes)) s.incomes = clone(incomesOf(s));
-  return `<div class="grid2 settings-grid">${OPEN(`${LBL("Monthly Income")}・${ymEn(ym)}`)}
+  return {money: `<div class="grid2 settings-grid">${OPEN(`${LBL("Monthly Income")}・${ymEn(ym)}`)}
     <div class="frow">
       <label class="f">實領薪資<input id="s-sal" type="number" data-bind="salaryOverride.${ym}" value="${s.salaryOverride?.[ym] ?? ""}" placeholder="${s.salary?.[ym] ?? ""}"></label>
       <label class="f">年終實領<input id="s-bonus" type="number" data-bind="bonus.${ym}" value="${s.bonus?.[ym] ?? ""}"></label>
@@ -2204,7 +2262,7 @@ function renderSettings(ym){
       <label class="f">每日餐費<input id="s-meal" type="number" data-bind="meal.daily" value="${s.meal?.daily ?? ""}"></label>
       <label class="f">記在哪個支出類別<select id="s-mealcat" data-bind="meal.cat" data-type="text">${[...new Set([mealCat()].concat(spendCats()))].map(c => `<option ${c === mealCat() ? "selected" : ""}>${esc(c)}</option>`).join("")}</select></label>
     </div>
-    ${CLOSE}${OPEN("Goals & Reminders")}
+    ${CLOSE}</div>`, dates: `<div class="grid2 settings-grid">${OPEN("Goals & Reminders")}
     <div class="frow">
       <label class="f">補貨提前幾天提醒<input id="s-ls" type="number" data-bind="leadSupply" value="${s.leadSupply ?? 7}"></label>
       <label class="f">發薪日（每月幾號）<input id="s-pd" type="number" min="1" max="28" data-bind="payday" value="${s.payday ?? 16}"></label>
@@ -2214,7 +2272,7 @@ function renderSettings(ym){
       ${pages().length ? `<label class="f">${esc(careLabel())} 提前幾天提醒<input id="s-lh" type="number" data-bind="leadHealth" value="${s.leadHealth ?? 14}"></label>` : ""}
     </div>
     <label class="toggle"><input id="s-card" type="checkbox" data-cardon ${cardOn() ? "checked" : ""}><span>有用信用卡（記錄每期卡費、提醒繳款）</span></label>
-    ${CLOSE}${OPEN("Google Calendar")}
+    ${CLOSE}</div>`, gcal: `${OPEN("Google Calendar")}
     <label class="toggle"><input id="s-gsync" type="checkbox" data-gsync ${S.settings?.gsyncOff ? "" : "checked"}><span>把任務、${pages().length ? esc(careLabel()) + "、" : ""}補貨、運動寫入 Google 日曆（標題前有 👾、不提醒）</span></label>
     <div class="frow" style="grid-template-columns:1fr auto">
       <label class="f">寫入哪個日曆<select id="s-gtarget" data-gtarget>
@@ -2231,13 +2289,10 @@ function renderSettings(ym){
         return `<label><input id="gs-${i}" type="checkbox" data-gshow value="${esc(c.id)}" ${on ? "checked" : ""}><span>${esc(c.summary || c.id)}${c.id === S.settings?.gcalTarget ? `<em>寫入中</em>` : ""}</span></label>`; }).join("")}</div>`
         : `<div class="note">按右邊「讀取日曆清單」載入你的日曆。</div>`}
     </div>
-    ${CLOSE}</div>
-    ${actManager()}
-    ${catManager()}
-    ${pageManager()}
-    ${spendCatSection()}
-    ${labelManager()}
-    ${OPEN("Backup")}<div><button class="link" data-act="copyBackup">複製全部資料</button></div>${CLOSE}`;
+    ${CLOSE}`,
+    pages: `${actManager()}${catManager()}${pageManager()}${spendCatSection()}`,
+    labels: labelManager(),
+    backup: `${OPEN("Backup")}<div><button class="link" data-act="copyBackup">複製全部資料</button></div>${CLOSE}`};
 }
 
 /* ---------- supplies / health ---------- */
@@ -2460,23 +2515,65 @@ function actManager(){
   </div></div><div class="sec-f">想固定做的事可以在這裡新增，首頁會出現打卡按鈕，可以設每週幾次或每幾天一次的目標；有填每次花費的話，打卡時會自動記帳。打卡也會寫進 Google 日曆。</div></section>`;
 }
 const THEMES = [
-  {id:"", name:"預設", desc:"白天淺色、晚上深色", bg:"linear-gradient(135deg,#e6e3df 50%,#1d1a18 50%)", card:"#fbfaf8", dots:["#8c7b70","#c2b0a3","#8d9a84"]},
-  {id:"light", name:"哈哈", desc:"淺色・霧感大地色", bg:"#e6e3df", card:"#fbfaf8", dots:["#8c7b70","#8d9a84","#b9837a"]},
-  {id:"dark", name:"哈哈哈", desc:"深色・低調暖棕", bg:"#1d1a18", card:"#282421", dots:["#c2b0a3","#a9b59f","#d3a097"]},
-  {id:"peach", name:"嘻嘻", desc:"淺色・珊瑚橘", bg:"#fdeee6", card:"#fffaf6", dots:["#f2665a","#f39a2b","#33ad86"]},
-  {id:"mint", name:"哇", desc:"淺色・清爽薄荷綠", bg:"#e4f4ef", card:"#fbfffd", dots:["#0fae93","#6474f2","#eb9f2e"]},
-  {id:"grape", name:"哇哇", desc:"深色・亮紫配霓虹", bg:"#16122a", card:"#211b3a", dots:["#b388ff","#ff7aa8","#5fe0a0"]}];
+  {id:"", name:"預設", bg:"linear-gradient(135deg,#e2dfdc 50%,#211e1d 50%)", card:"#f6f5f4", dots:["#897c74","#bdafa5","#8d9786"]},
+  {id:"light", name:"哈哈", bg:"#e2dfdc", card:"#f6f5f4", dots:["#897c74","#8d9786","#b18781"]},
+  {id:"dark", name:"哈哈哈", bg:"#211e1d", card:"#2b2826", dots:["#bdafa5","#a8b1a0","#caa39c"]},
+  {id:"peach", name:"嘻嘻", bg:"#f6ebe4", card:"#f9f6f2", dots:["#df746a","#db9742","#42a082"]},
+  {id:"mint", name:"哇", bg:"#e2eeea", card:"#f7faf8", dots:["#239d88","#737fe0","#d59a44"]},
+  {id:"grape", name:"哇哇", bg:"#1c192b", card:"#27223a", dots:["#b493ef","#ed87ab","#6dd09f"]},
+  {id:"cloud", name:"哇哇哇", bg:"#e2e0db", card:"#ebeae6", dots:["#5d86b6","#da966d","#768d76"]},
+  {id:"sycamore", name:"哇哇哇哇", bg:"#212724", card:"#2b332f", dots:["#85b39d","#cbc172","#ce7c82"]},
+  {id:"clay", name:"哇哇哇哇哇", bg:"#e5ded5", card:"#f2eee9", dots:["#b67f61","#768d76","#6896be"]}];
+const CUSTOM_SLOTS = [["bg","背景"],["card","卡片"],["fill","輸入框"],["ink","文字"],["muted","次要文字"],["accent","主色"],["green","綠"],["orange","橘"],["red","紅"],["indigo","紫"],["teal","藍綠"],["save","藍"]];
+const PANTONE26 = [["Cloud Dancer","#f0eee9"],["Egret","#f3ece0"],["White Onyx","#d7d6ce"],["Angora","#dfd1bb"],["Tickled Pink","#f7b9c2"],["Burnished Lilac","#c5aeb1"],["Dutch Canal","#96bae0"],["Sage Green","#b2ac88"],
+  ["Candied Ginger","#bfa387"],["Acacia","#dacd65"],["Palm","#afaf5e"],["Neptune Green","#7fbb9e"],["Shale Green","#739072"],["Muted Clay","#d29380"],["Musk Melon","#ec935e"],["Mandarin Orange","#ec6a37"],
+  ["Caramel","#c37c54"],["Tea Rose","#dc7178"],["Teaberry","#dc3855"],["Burnt Sienna","#c65d52"],["Foxglove","#b98391"],["Dusky Rose","#ba797d"],["Amethyst Orchid","#926aa6"],["All Aboard","#5c97cb"],
+  ["Marina","#5085c3"],["Underworld","#83807b"],["Green Envy","#a19436"],["Burnt Olive","#646049"],["Alexandrite","#00666c"],["Sycamore","#35463d"],["Poseidon","#133955"],["Rhodonite","#3e3b59"],
+  ["Toffee","#755139"],["Arabian Spice","#884332"],["Lava Falls","#9a2b2e"],["Festival Fuchsia","#9e2c6a"],["Amaranth","#6b3453"],["Red Mahogany","#60373d"],["Chocolate Truffle","#612e35"],["Coffee Bean","#40312f"]];
+const CUSTOM_VARS = ["--bg","--card","--fill","--ink","--muted","--accent","--green","--orange","--red","--indigo","--teal","--sep","--c-fixed","--c-meal","--c-save","--c-spend","--c-inc","color-scheme"];
+const isHex = v => /^#[0-9a-f]{6}$/i.test(v || "");
+function hexLum(h){ const n = parseInt(h.slice(1), 16); return (0.299*(n>>16) + 0.587*((n>>8)&255) + 0.114*(n&255)) / 255; }
+function customVars(c){
+  const o = {}; for (const [k] of CUSTOM_SLOTS) if (isHex(c[k]) && k !== "save") o["--" + k] = c[k];
+  if (isHex(c.ink)) o["--sep"] = `color-mix(in srgb, ${c.ink} 14%, transparent)`;
+  if (isHex(c.accent)) o["--c-fixed"] = c.accent; if (isHex(c.orange)) o["--c-meal"] = c.orange; if (isHex(c.save)) o["--c-save"] = c.save;
+  if (isHex(c.red)) o["--c-spend"] = c.red; if (isHex(c.muted)) o["--c-inc"] = c.muted;
+  if (isHex(c.bg)) o["color-scheme"] = hexLum(c.bg) < 0.45 ? "dark" : "light";
+  return o;
+}
+function currentColors(){
+  const cs = getComputedStyle(document.documentElement), o = {};
+  for (const [k] of CUSTOM_SLOTS){ const v = cs.getPropertyValue(k === "save" ? "--c-save" : "--" + k).trim(); if (isHex(v)) o[k] = v.toLowerCase(); }
+  return o;
+}
 function applyTheme(){
   const t = S.settings?.theme || "", el = document.documentElement;
   if (t) el.dataset.theme = t; else delete el.dataset.theme;
-  try { localStorage.setItem("lifeapp:theme", JSON.stringify(t)); } catch {}
+  const vars = t === "custom" ? customVars(S.settings.customTheme || {}) : null;
+  for (const k of CUSTOM_VARS) el.style.removeProperty(k);
+  if (vars) for (const [k, v] of Object.entries(vars)) el.style.setProperty(k, v);
+  try { localStorage.setItem("lifeapp:theme", JSON.stringify(t)); localStorage.setItem("lifeapp:themeVars", JSON.stringify(vars)); } catch {}
   const m = document.querySelector('meta[name="theme-color"]'); if (m) m.content = getComputedStyle(el).getPropertyValue("--bg").trim() || m.content;
 }
 function themeSec(){
-  const cur = S.settings?.theme || "";
-  return sec("Theme", `<div class="themes">${THEMES.map(t => `<button type="button" class="theme-btn" data-act="setTheme" data-theme-id="${t.id}" aria-pressed="${t.id === cur}">
-    <span class="theme-sw" style="background:${t.bg}"><b style="background:${t.card}"></b>${t.dots.map(c => `<span style="background:${c}"></span>`).join("")}</span>
-    <span class="tn">${t.name}</span><span class="td">${t.desc}</span></button>`).join("")}</div>`);
+  const cur = S.settings?.theme || "", c = S.settings?.customTheme || {};
+  const btn = (id, name, sw) => `<button type="button" class="theme-btn" data-act="setTheme" data-theme-id="${id}" aria-pressed="${id === cur}">${sw}<span class="tn">${name}</span></button>`;
+  const sw = t => `<span class="theme-sw" style="background:${t.bg}"><b style="background:${t.card}"></b>${t.dots.map(x => `<span style="background:${x}"></span>`).join("")}</span>`;
+  const csw = isHex(c.bg) ? sw({bg: c.bg, card: c.card || c.bg, dots: [c.accent, c.orange, c.green].filter(isHex)})
+    : `<span class="theme-sw" style="background:linear-gradient(110deg,#d29380,#dacd65,#7fbb9e,#96bae0,#926aa6)"><b style="background:#f0eee9"></b></span>`;
+  let editor = "";
+  if (cur === "custom"){
+    const sel = CUSTOM_SLOTS.some(x => x[0] === ui.custSlot) ? ui.custSlot : "bg", selName = CUSTOM_SLOTS.find(x => x[0] === sel)[1];
+    editor = `<div class="cust">
+      <div class="cust-slots">${CUSTOM_SLOTS.map(([k, l]) => `<button type="button" class="cslot" data-act="custSlot" data-k="${k}" aria-pressed="${k === sel}"><span class="cdot" style="background:${isHex(c[k]) ? c[k] : "transparent"}"></span><span>${l}</span></button>`).join("")}</div>
+      <div class="sub-h" style="margin:14px 0 8px">Pantone 2026 色票・點一下套用到「${selName}」</div>
+      <div class="psw-grid">${PANTONE26.map(([n, h]) => `<button type="button" class="psw" data-act="custColor" data-hex="${h}" title="${n}" aria-label="${n}" aria-pressed="${(c[sel] || "").toLowerCase() === h}" style="background:${h}"></button>`).join("")}</div>
+      <div class="row between" style="margin-top:12px"><label class="row" style="gap:8px">其他顏色<input id="cust-color" type="color" data-custcolor value="${isHex(c[sel]) ? c[sel] : "#888888"}"></label>
+        <span class="note">${esc(PANTONE26.find(x => x[1] === (c[sel] || "").toLowerCase())?.[0] || (c[sel] || ""))}</span>
+        <button class="link" data-act="custReset">重設</button></div>
+    </div>`;
+  }
+  return sec("Theme", `<div class="themes">${THEMES.map(t => btn(t.id, t.name, sw(t))).join("")}${btn("custom", "自訂", csw)}</div>${editor}`);
 }
 const MAX_PAGES = 3;
 function pageManager(){
@@ -2820,6 +2917,7 @@ function setPath(obj, path, val){
 function getPath(obj, path){ return path.split(".").reduce((o,k) => o?.[k], obj); }
 
 app.addEventListener("change", e => {
+  if (e.target.dataset?.custcolor !== undefined && S.settings){ S.settings.customTheme = {...(S.settings.customTheme || {}), [ui.custSlot || "bg"]: e.target.value.toLowerCase()}; applyTheme(); return saveSettings(); }
   const el = e.target;
   if (el.dataset.gtarget !== undefined && S.settings){
     const c = (S.calList||[]).find(x => x.id === el.value);
@@ -3159,6 +3257,10 @@ document.addEventListener("click", async e => {
   if (a === "initSettings"){ S.settings = {startMonth:ymOf(new Date()), tutor:{rate:0, weekdays:[], perDay:1, skip:{}}, salary:{}, bonus:{}, fixed:[], fx:{usd:32, fee:0.015}, savings:[], goals:{gymPerWeek:2, racketDays:14}, leadSupply:7, leadHealth:14}; return saveSettings(); }
   if (a === "addAdj"){ (S.settings.salaryAdj ||= []).push({id:uid(), ym:b.dataset.ym, label:"", amount:0}); return saveSettings(); }
   if (a === "delAdj"){ S.settings.salaryAdj.splice(Number(b.dataset.i),1); return saveSettings(); }
+  if (a === "custSlot"){ ui.custSlot = b.dataset.k; return render(); }
+  if (a === "custColor"){ S.settings.customTheme = {...(S.settings.customTheme || {}), [ui.custSlot || "bg"]: b.dataset.hex}; applyTheme(); return saveSettings(); }
+  if (a === "custReset"){ const keep = S.settings.theme; S.settings.theme = "light"; applyTheme(); S.settings.customTheme = currentColors(); S.settings.theme = keep; applyTheme(); return saveSettings(); }
+  if (a === "setTheme" && b.dataset.themeId === "custom" && !isHex(S.settings.customTheme?.bg)){ S.settings.customTheme = currentColors(); }
   if (a === "setTheme"){ S.settings.theme = b.dataset.themeId || ""; if (!S.settings.theme) delete S.settings.theme; applyTheme(); ui.openSettings = true; return saveSettings(); }
   if (a === "addIncome"){ if (!Array.isArray(S.settings.incomes)) S.settings.incomes = clone(incomesOf(S.settings)); S.settings.incomes.push({id:uid(), name:"新收入", kind:"monthly", amount:0}); ui.openSettings = true; return saveSettings(); }
   if (a === "delIncome"){ S.settings.incomes.splice(Number(b.dataset.i),1); ui.openSettings = true; return saveSettings(); }
@@ -3234,8 +3336,8 @@ function gcalHandle(ev, cal){
   const c = ev.error?.code;
   if (["needs_reauth","server_not_connected","blocked_by_policy","not_in_manifest","selection_required"].includes(c)) S.gcal = {};
   S.gcalState = c === "approval_required" || c === "consent_required" ? "approve" : c || "error";
-  S.gcalMsg = {needs_reauth:"Google 連線過期了，請按上方「重新連線」。",
-    server_not_connected:"還沒連上 Google，請按上方「重新連線」。",
+  S.gcalMsg = {needs_reauth:"Google 連線過期了，請到 Settings → Account 按「重新連線 Google」。",
+    server_not_connected:"還沒連上 Google，請到 Settings → Account 按「重新連線 Google」。",
     selection_required:"請重新連線 Google。",
     not_in_manifest:"這個頁面沒有被允許讀取 Google 日曆。",
     blocked_by_policy:"組織政策不允許這個頁面讀取 Google 日曆。",
@@ -3638,6 +3740,8 @@ let pendingQuick = null;
 function route(){
   const h = location.hash.replace("#","");
   if (h === "add" || h === "spend" || h === "buy" || h === "meal"){ pendingQuick = h; ui.tab = "home"; runQuick(); location.hash = "#home"; return; }
+  if (h.startsWith("settings/")){ ui.tab = "settings"; ui.setTab = h.slice(9); scrollTo(0, 0); return render(); }
+  if (h === "settings" && ui.setTab){ ui.setTab = ""; scrollTo(0, 0); }
   ui.tab = (tabs().includes(h) || h === "health" || h.startsWith("pg-")) ? h : "home"; render();
 }
 function runQuick(){ if (!pendingQuick) return; if (db && !S.settings) return setTimeout(runQuick, 300); const q = pendingQuick; pendingQuick = null; q === "spend" ? openQuickSpend() : q === "meal" ? openQuickSpend(mealCat()) : q === "buy" ? openBuy() : openQuick(); }

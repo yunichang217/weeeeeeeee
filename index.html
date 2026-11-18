@@ -3,15 +3,16 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>👾 生活管理</title>
+<title>👾</title>
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#e6e3df">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
-<meta name="apple-mobile-web-app-title" content="生活管理">
+<meta name="apple-mobile-web-app-title" content="👾">
 <link rel="apple-touch-icon" href="icon-192.png">
 <link rel="icon" href="icon-192.png">
+<script>try{var t=localStorage.getItem("lifeapp:theme");if(t)document.documentElement.dataset.theme=JSON.parse(t)}catch(e){}</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Huninn&display=swap" rel="stylesheet">
@@ -34,7 +35,7 @@
   color-scheme:light;
 }
 @media (prefers-color-scheme: dark){
-  :root:not([data-theme="light"]){
+  :root:not([data-theme]){
     --bg:#1d1a18; --card:#282421; --ink:#ede6de; --muted:#a2988f; --sep:rgba(200,185,170,.16); --fill:#34302c;
     --accent:#c2b0a3; --green:#a9b59f; --orange:#d2b688; --red:#d3a097; --indigo:#bba7b5; --teal:#a9b2b6;
     color-scheme:dark;
@@ -45,6 +46,30 @@
   --accent:#c2b0a3; --green:#a9b59f; --orange:#d2b688; --red:#d3a097; --indigo:#bba7b5; --teal:#a9b2b6;
   color-scheme:dark;
 }
+/* ---------- 主題配色 ---------- */
+:root[data-theme="peach"]{
+  --bg:#fdeee6; --card:#fffaf6; --ink:#4a2c28; --muted:#a67d74; --sep:rgba(140,70,50,.14); --fill:#f8e0d5;
+  --accent:#f2665a; --green:#33ad86; --orange:#f39a2b; --red:#e8505b; --indigo:#8b67f0; --teal:#22a9bd;
+  --c-fixed:#c0583f; --c-meal:#f29f3c; --c-save:#4f7fd9; --c-spend:#e0517a; --c-inc:#b49b94; color-scheme:light;
+}
+:root[data-theme="mint"]{
+  --bg:#e4f4ef; --card:#fbfffd; --ink:#21403a; --muted:#6e918a; --sep:rgba(40,100,90,.14); --fill:#d3ece5;
+  --accent:#0fae93; --green:#2ea86a; --orange:#eb9f2e; --red:#e8605e; --indigo:#6474f2; --teal:#1aa1c4;
+  --c-fixed:#3c7f74; --c-meal:#e8a23a; --c-save:#4a78d8; --c-spend:#e0627f; --c-inc:#93aaa4; color-scheme:light;
+}
+:root[data-theme="grape"]{
+  --bg:#16122a; --card:#211b3a; --ink:#f1ecff; --muted:#a39cc4; --sep:rgba(190,170,255,.16); --fill:#2c2550;
+  --accent:#b388ff; --green:#5fe0a0; --orange:#ffc25e; --red:#ff7aa8; --indigo:#8ab4ff; --teal:#5fd4e6;
+  --c-fixed:#a98bff; --c-meal:#ffc15e; --c-save:#6fb1ff; --c-spend:#ff7aa8; --c-inc:#7f78a6; color-scheme:dark;
+}
+.themes{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;padding:14px 16px}
+.theme-btn{font:inherit;border:1.5px solid var(--sep);border-radius:14px;padding:10px;background:var(--card);color:var(--ink);cursor:pointer;display:grid;gap:8px;text-align:left}
+.theme-btn[aria-pressed="true"]{border-color:var(--accent);box-shadow:0 0 0 2px color-mix(in srgb,var(--accent) 35%,transparent)}
+.theme-sw{height:44px;border-radius:9px;display:flex;align-items:flex-end;gap:5px;padding:7px}
+.theme-sw span{width:14px;height:14px;border-radius:50%}
+.theme-sw b{flex:1;height:20px;border-radius:6px}
+.theme-btn .tn{font-size:.86rem;font-weight:600}
+.theme-btn .td{font-size:.74rem;color:var(--muted)}
 *{box-sizing:border-box}
 html,body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--font);font-size:15.5px;line-height:1.5;letter-spacing:.02em;-webkit-font-smoothing:antialiased}
 body{font-variant-numeric:tabular-nums;padding-bottom:calc(84px + env(safe-area-inset-bottom))}
@@ -127,7 +152,7 @@ button.wdg.wbtn:focus-visible{outline:2px solid var(--accent);outline-offset:2px
 .catd>summary{list-style:none;cursor:pointer;display:grid;grid-template-columns:1fr auto;gap:2px 8px;padding:12px 16px;border-bottom:.5px solid var(--sep)}
 .catd>summary::-webkit-details-marker{display:none}
 :root{--c-fixed:#7d5b4a;--c-meal:#c48a4a;--c-save:#5c76ab;--c-spend:#c26a83;--c-inc:#a39a92}
-@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--c-fixed:#80635a;--c-meal:#bf9032;--c-save:#6c86c3;--c-spend:#cd7491;--c-inc:#7d746d}}
+@media (prefers-color-scheme: dark){:root:not([data-theme]){--c-fixed:#80635a;--c-meal:#bf9032;--c-save:#6c86c3;--c-spend:#cd7491;--c-inc:#7d746d}}
 :root[data-theme="dark"]{--c-fixed:#80635a;--c-meal:#bf9032;--c-save:#6c86c3;--c-spend:#cd7491;--c-inc:#7d746d}
 .hatch{background-image:repeating-linear-gradient(45deg,transparent 0 3px,rgba(255,255,255,.55) 3px 5px)!important}
 .ov-tiles{display:grid;grid-template-columns:repeat(4,1fr);gap:0;border-bottom:.5px solid var(--sep)}
@@ -1432,7 +1457,7 @@ const LABEL_GROUPS = [
   ["Tasks", ["Today", "Bills", "All Tasks"]],
   ["Supplies", ["Restock", "To Buy", "By Category"]],
   ["Finance", ["Overview", "This Month", "Credit Card", "Recurring", "Trend", "Spending", "Daily", "Installments"]],
-  ["Settings", ["Monthly Income", "Fixed Costs", "Savings", "Goals & Reminders", "Google Calendar", "Google Sheet", "Categories", "Custom Pages", "Expense Categories", "Backup"]]];
+  ["Settings", ["Theme", "Monthly Income", "Fixed Costs", "Savings", "Goals & Reminders", "Google Calendar", "Google Sheet", "Categories", "Custom Pages", "Expense Categories", "Backup"]]];
 function labelManager(){
   const lab = S.settings?.labels || {};
   return `<details class="adv" ${ui.openLabels ? "open" : ""} id="labelsBox"><summary>自訂名稱</summary><div class="card" style="padding:12px 16px">
@@ -1457,10 +1482,11 @@ function renderNav(){
   for (const a of nav.querySelectorAll("a[href]")){ const k = a.getAttribute("href").slice(1), base = {home:"Home", tasks:"Tasks", supplies:"Supplies", finance:"Finance", settings:"Settings"}[k]; if (base){ const sp = a.querySelector("span"); if (sp) sp.textContent = S.settings?.labels?.[base] || base; } }
   const before = nav.querySelector('a[href="#settings"]');
   for (const pg of pages()){ const a = document.createElement("a"); a.href = "#" + pageKey(pg); a.dataset.page = pg.id; a.innerHTML = (pg.id === "health" ? HEART_ICON : TAG_ICON) + `<span>${esc(pg.name)}</span>`; nav.insertBefore(a, before); }
-  if (S.settings?.appName){ document.title = S.settings.appName; const br = document.querySelector(".brand"); if (br) br.textContent = "👾 " + S.settings.appName; }
+  if (S.settings?.appName){ const br = document.querySelector(".brand"); if (br) br.textContent = "👾 " + S.settings.appName; }
 }
 function render(){
   maybePush();
+  applyTheme();
   renderNav();
   document.querySelectorAll("#tabs a").forEach(a => a.setAttribute("aria-current", a.getAttribute("href") === "#"+ui.tab ? "page" : "false"));
   const ae = document.activeElement; const keepId = ae && ae.id && app.contains(ae) ? ae.id : null;
@@ -2105,6 +2131,7 @@ function renderSettingsPage(){
   const ym = ui.setMonth = effYm(ui.setMonth);
   return `${window.LIFE?.accountSec?.() || ""}${guideSec()}<div class="large"><div><h1>${LBL("Settings")}</h1></div>
     <div class="datenav"><button class="link big" data-act="setMonth" data-n="-1" aria-label="上個月" ${ym <= startYm() ? "disabled" : ""}>‹</button><strong style="min-width:9em">${ymEn(ym)}</strong><button class="link big" data-act="setMonth" data-n="1" aria-label="下個月">›</button></div></div>
+    ${themeSec()}
     ${sec("Google Sheet", `<div class="pad">
       <label class="toggle"><input id="s-sheet" type="checkbox" data-sheet ${S.settings.sheetSyncOff ? "" : "checked"}><span>從你的 Google 試算表「收支表」同步每月薪資、年終與儲蓄</span></label>
       <label class="f">試算表連結<input id="s-sheetlink" type="url" data-sheetlink value="https://docs.google.com/spreadsheets/d/${esc(sheetId())}/edit"></label>
@@ -2431,6 +2458,25 @@ function actManager(){
     </tbody></table></div>
     <form class="rowi" data-form="act" style="padding-left:0"><span class="main"><input id="ac-new" name="name" type="text" maxlength="16" placeholder="新項目，例：健身、跑步、讀書、彈琴"></span><button class="link" type="submit">新增</button></form>
   </div></div><div class="sec-f">想固定做的事可以在這裡新增，首頁會出現打卡按鈕，可以設每週幾次或每幾天一次的目標；有填每次花費的話，打卡時會自動記帳。打卡也會寫進 Google 日曆。</div></section>`;
+}
+const THEMES = [
+  {id:"", name:"預設", desc:"白天淺色、晚上深色", bg:"linear-gradient(135deg,#e6e3df 50%,#1d1a18 50%)", card:"#fbfaf8", dots:["#8c7b70","#c2b0a3","#8d9a84"]},
+  {id:"light", name:"哈哈", desc:"淺色・霧感大地色", bg:"#e6e3df", card:"#fbfaf8", dots:["#8c7b70","#8d9a84","#b9837a"]},
+  {id:"dark", name:"哈哈哈", desc:"深色・低調暖棕", bg:"#1d1a18", card:"#282421", dots:["#c2b0a3","#a9b59f","#d3a097"]},
+  {id:"peach", name:"嘻嘻", desc:"淺色・珊瑚橘", bg:"#fdeee6", card:"#fffaf6", dots:["#f2665a","#f39a2b","#33ad86"]},
+  {id:"mint", name:"哇", desc:"淺色・清爽薄荷綠", bg:"#e4f4ef", card:"#fbfffd", dots:["#0fae93","#6474f2","#eb9f2e"]},
+  {id:"grape", name:"哇哇", desc:"深色・亮紫配霓虹", bg:"#16122a", card:"#211b3a", dots:["#b388ff","#ff7aa8","#5fe0a0"]}];
+function applyTheme(){
+  const t = S.settings?.theme || "", el = document.documentElement;
+  if (t) el.dataset.theme = t; else delete el.dataset.theme;
+  try { localStorage.setItem("lifeapp:theme", JSON.stringify(t)); } catch {}
+  const m = document.querySelector('meta[name="theme-color"]'); if (m) m.content = getComputedStyle(el).getPropertyValue("--bg").trim() || m.content;
+}
+function themeSec(){
+  const cur = S.settings?.theme || "";
+  return sec("Theme", `<div class="themes">${THEMES.map(t => `<button type="button" class="theme-btn" data-act="setTheme" data-theme-id="${t.id}" aria-pressed="${t.id === cur}">
+    <span class="theme-sw" style="background:${t.bg}"><b style="background:${t.card}"></b>${t.dots.map(c => `<span style="background:${c}"></span>`).join("")}</span>
+    <span class="tn">${t.name}</span><span class="td">${t.desc}</span></button>`).join("")}</div>`);
 }
 const MAX_PAGES = 3;
 function pageManager(){
@@ -3113,6 +3159,7 @@ document.addEventListener("click", async e => {
   if (a === "initSettings"){ S.settings = {startMonth:ymOf(new Date()), tutor:{rate:0, weekdays:[], perDay:1, skip:{}}, salary:{}, bonus:{}, fixed:[], fx:{usd:32, fee:0.015}, savings:[], goals:{gymPerWeek:2, racketDays:14}, leadSupply:7, leadHealth:14}; return saveSettings(); }
   if (a === "addAdj"){ (S.settings.salaryAdj ||= []).push({id:uid(), ym:b.dataset.ym, label:"", amount:0}); return saveSettings(); }
   if (a === "delAdj"){ S.settings.salaryAdj.splice(Number(b.dataset.i),1); return saveSettings(); }
+  if (a === "setTheme"){ S.settings.theme = b.dataset.themeId || ""; if (!S.settings.theme) delete S.settings.theme; applyTheme(); ui.openSettings = true; return saveSettings(); }
   if (a === "addIncome"){ if (!Array.isArray(S.settings.incomes)) S.settings.incomes = clone(incomesOf(S.settings)); S.settings.incomes.push({id:uid(), name:"新收入", kind:"monthly", amount:0}); ui.openSettings = true; return saveSettings(); }
   if (a === "delIncome"){ S.settings.incomes.splice(Number(b.dataset.i),1); ui.openSettings = true; return saveSettings(); }
   if (a === "addFixed"){ S.settings.fixed.push({id:uid(), name:"新項目", kind:"monthly", amount:0}); ui.openSettings = true; return saveSettings(); }

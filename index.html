@@ -960,6 +960,7 @@ const LIFE_SCOPES = "openid email profile https://www.googleapis.com/auth/drive.
       <div class="ob-box"><h2>和 Google 連動</h2><ul class="ob-ul">
         <li><b>Google 試算表</b>：資料會存在你自己雲端硬碟裡一份同名的試算表。「支出紀錄」分頁可以直接看每一筆花費，「收支表」分頁可以填每個月的薪資和儲蓄，App 會自動同步。</li>
         <li><b>Google 日曆</b>：任務、補貨、預約和你新增的行程，會寫進一個同名的新日曆，手機的日曆 App 也看得到。</li></ul></div>
+      ${/Line\/|FBAN|FBAV|Instagram|Messenger|; wv\)/i.test(navigator.userAgent) ? `<p class="ob-warn">你現在是在 App 裡的瀏覽器開啟，Google 不允許在這裡登入。請點右上角選單，選「用瀏覽器開啟」，改用 Safari 或 Chrome。</p>` : ""}
       ${noId ? `<p class="ob-warn">這份 app 還沒設定 Google 用戶端 ID，請把 runtime 開頭的 GOOGLE_CLIENT_ID 換成你的 ID（見 README）。</p>` : `
       <label class="ob-f">你的名字<input id="ob-name" type="text" autocomplete="name" placeholder="例：小明"></label>
       <button class="ob-btn" type="button" id="ob-go">用 Google 帳號開始</button>
@@ -974,7 +975,10 @@ const LIFE_SCOPES = "openid email profile https://www.googleapis.com/auth/drive.
       if (!name){ msg("請先輸入名字"); box.querySelector("#ob-name").focus(); return; }
       go.disabled = true; msg("正在開啟 Google 登入…");
       const r = await signIn("consent");
-      if (!r?.access_token){ go.disabled = false; msg(r?.error === "gis_failed" ? "連不到 Google，請確認網路後再試一次" : "沒有完成登入，請再試一次"); return; }
+      if (!r?.access_token){ go.disabled = false; msg(r?.error === "gis_failed" ? "連不到 Google，請確認網路後再試一次"
+        : r?.error === "popup_failed_to_open" ? "登入視窗被擋住了。請允許這個網站彈出視窗，或用 Safari、Chrome 直接開啟這個網址。"
+        : r?.error === "access_denied" ? "這個 Google 帳號還沒加入測試使用者，請聯絡分享網址給你的人。"
+        : "沒有完成登入。如果登入視窗一直沒出現，請用 Safari 或 Chrome 直接開啟這個網址再試一次。"); return; }
       try {
         msg("正在建立你的試算表和日曆…");
         const me = await api("https://www.googleapis.com/oauth2/v3/userinfo").catch(() => ({}));

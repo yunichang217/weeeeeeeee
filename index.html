@@ -155,6 +155,10 @@ main{max-width:1000px;margin:0 auto;padding:8px 20px 24px;display:grid;gap:22px}
 .rowi .v.strong{color:var(--ink);font-weight:500}
 .rowi.total .main,.rowi.total .v{font-weight:600;color:var(--ink)}
 .rowi.tap{cursor:pointer}
+.askdone .group{box-shadow:0 0 0 1.5px color-mix(in srgb,var(--accent) 45%,transparent)}
+.askrow{flex-wrap:wrap;row-gap:8px}
+.askacts{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+@media (max-width:640px){.askacts{width:100%;justify-content:flex-start}}
 .setmenu{max-width:720px}
 .setrow{color:inherit;text-decoration:none;cursor:pointer;min-height:52px}
 .setrow .t{font-weight:500}
@@ -1477,6 +1481,12 @@ function lateByTask(){
   const m = new Map(); overdueTasks().forEach(x => { if (!m.has(x.t.id) || m.get(x.t.id).late < x.late) m.set(x.t.id, x); });
   return [...m.values()];
 }
+function doneLog(it){
+  const m = new Map();
+  for (const h of it.hist || []) if (h?.date) m.set(h.date, h);
+  if (it.last && !m.has(it.last)) m.set(it.last, {date: it.last});
+  return [...m.values()].sort((a, b) => a.date.localeCompare(b.date));
+}
 function eventsOn(d){
   const key = iso(d), ev = [], s = S.settings, isToday = key === iso(new Date());
   if (isToday) lateByTask().forEach(x => ev.push({type:"task", id:x.t.id, text:`${x.t.name}（逾期 ${x.late} 天）`, done:false}));
@@ -1489,6 +1499,7 @@ function eventsOn(d){
   S.health.forEach(it => { const x = due(it, leadHealth()); if (!x.next) return;
     if (iso(x.next) === key) ev.push({type:"health", label: pageName(it), id:it.id, booked:!!it.booked, text: x.booked ? `${it.name}（預約）` : it.name, time: it.booked && it.bookedTime ? `${it.bookedTime}–${it.bookedEnd || ""}` : "", where: it.booked ? it.bookedWhere || "" : ""});
     else if (isToday && x.days < 0 && !it.booked) ev.push({type:"health", label: pageName(it), id:it.id, text:`${it.name}（逾期 ${-x.days} 天）`}); });
+  S.health.forEach(it => doneLog(it).filter(h => h.date === key).forEach(h => ev.push({type:"health", label: `${pageName(it)}・已完成`, id:it.id, text: it.name, done:true, rec:true, time: h.st ? `${h.st}–${h.et || ""}` : ""})));
   return (S.gcal[key] || []).map(g => ({type:"gcal", ...g})).concat(ev);
 }
 function spentOn(d){ const key = iso(d); return sum((S.spend[key.slice(0,7)]?.items||[]).filter(x => x.date === key), x => Number(x.amount)||0); }
@@ -1827,7 +1838,7 @@ function renderHome(){
       <button class="link big" data-act="shift" data-n="1" aria-label="下一段">›</button></div>
       </div>`;
   const body = ui.view === "day" ? renderDay(c) : ui.view === "week" ? renderWeek(c) : renderMonth(c);
-  return top + widgets(ymOf(c), ui.view, c) + body + (ui.view === "month" ? `<div style="margin-top:22px">${billsSec(effYm(ymOf(c)))}</div>` : "");
+  return top + askDoneSec() + widgets(ymOf(c), ui.view, c) + body + (ui.view === "month" ? `<div style="margin-top:22px">${billsSec(effYm(ymOf(c)))}</div>` : "");
 }
 
 function taskRows(list){
@@ -1858,7 +1869,7 @@ function renderDay(d){
   return `<div class="grid2">
     <div class="sec" style="gap:22px">
       ${(() => { const hr = isToday ? healthReminders() : [], cr = isToday ? cardReminders() : [], sr = isToday ? supplyTasks() : []; return sec("Tasks", (tlist.length || hr.length || cr.length || sr.length) ? cardRows(cr) + taskRows(tlist) + supplyTaskRows(sr) + reminderRows(hr) : `<p class="empty">${isToday ? "今天沒有例行任務。" : "這天沒有例行任務。"}</p>`, tlist.length ? `${tDone}/${tlist.length} 完成` : ""); })()}
-      ${(() => { const ev = eventsOn(d); return sec("Events", ev.map((e,i) => `<div class="rowi tap" data-act="openEvent" data-d="${key}" data-i="${i}"><span class="main"><span class="t">${esc(e.text)}</span><span class="s">${esc(e.label || EV_LABEL[e.type] || "")}${e.time ? `・${esc(e.time)}` : ""}</span></span><span class="v" aria-hidden="true">›</span></div>`).join("") + `<div class="rowi tap" data-act="newGEvent" data-d="${key}"><span class="main"><span class="t" style="color:var(--accent)">＋ 新增行程</span><span class="s">會同步到 Google 生活日曆</span></span></div>`, ev.length ? `${ev.length} 個` : ""); })()}
+      ${(() => { const ev = eventsOn(d); return sec("Events", ev.map((e,i) => `<div class="rowi tap ${e.done ? "done" : ""}" data-act="openEvent" data-d="${key}" data-i="${i}"><span class="main"><span class="t">${esc(e.text)}</span><span class="s">${esc(e.label || EV_LABEL[e.type] || "")}${e.time ? `・${esc(e.time)}` : ""}</span></span><span class="v" aria-hidden="true">›</span></div>`).join("") + `<div class="rowi tap" data-act="newGEvent" data-d="${key}"><span class="main"><span class="t" style="color:var(--accent)">＋ 新增行程</span><span class="s">會同步到 Google 生活日曆</span></span></div>`, ev.length ? `${ev.length} 個` : ""); })()}
       ${mealDaySec(d)}
       ${sec("Expenses", `<div class="pad">${spendForm(key, "home")}</div>${spendRows(items)}`, items.length ? `合計 ${money(sum(items, x => Number(x.amount)||0))}` : "")}
     </div>
@@ -2503,7 +2514,7 @@ function renderHealth(pid = "health"){
     <span class="s">${x.next ? mdEn(x.next) : "未設定"}・每 ${it.cycle || "?"} 天・${it.price ? money(it.price) + ((Number(it.inst)||1) >= 2 ? `（分 ${it.inst} 期）` : "") : "未填金額"}${it.note ? `・${esc(it.note)}` : ""}</span></span>${healthActs(it)}</div>`;
   const recRows = recs.slice(0, 12).map(x => `<div class="rowi" data-item="spend" data-ym="${x.date.slice(0,7)}" data-id="${x.id}"><span class="main"><span class="t">${esc(x.note || x.cat)}</span><span class="s">${mdEn(parseISO(x.date))}, ${x.date.slice(0,4)}${x.pay === "cash" ? "・現金" : ""}</span></span><span class="v strong">${money(x.amount)}</span></div>`).join("")
     + plans.map(pl => { const done = Math.max(0, Math.min(pl.n, monthsBetween(pl.start, cur) + 1)); return `<div class="rowi tap" data-act="openInstFromGroup" data-id="${pl.id}"><span class="main"><span class="t">${esc(pl.name)}</span><span class="s">分期 ${pl.n} 期・${Number(pl.start.slice(5))}/${pl.start.slice(0,4)} 起・已付 ${done} 期</span></span><span class="v strong">${money(pl.total)}</span></div>`; }).join("");
-  return `<div class="large"><div><h1>${esc(pg.name)}</h1></div><button class="btn" data-act="newItem" data-col="health" data-page="${esc(pid)}">新增事項</button></div>
+  return `<div class="large"><div><h1>${esc(pg.name)}</h1></div><button class="btn" data-act="newItem" data-col="health" data-page="${esc(pid)}">新增事項</button></div>${askDoneSec(pid)}
     ${sec("Overview", ovTiles([
       {k: `${yr} 年已花`, v: money(yearSpent), x: recs.length ? `${recs.length} 筆紀錄` : "還沒有紀錄"},
       {k: "未來 12 個月", v: money(next12), x: "依週期與分期估算"},
@@ -2705,6 +2716,50 @@ function openRestock(col, id){
     </div></form>`;
   if (!dlg.open) dlg.showModal();
 }
+function completeItem(col, id, get){
+  const it = S[col].find(x => x.id === id); if (!it) return;
+  const d = {get};
+    const date = d.get("date"), price = Number(d.get("price"))||0;
+    const item = {...it, last: date, booked: "", bookedTime: "", bookedEnd: "", bookedWhere: "", snooze: ""}; if (price) item.price = price;
+    if (col === "health"){
+      const h = doneLog(it).filter(x => x.date !== date);
+      h.push({date, ...(it.booked === date && it.bookedTime ? {st: it.bookedTime, et: it.bookedEnd || ""} : {})});
+      item.hist = h.sort((a, b) => a.date.localeCompare(b.date)).slice(-30);
+    }
+    const n = Math.max(1, Math.round(Number(d.get("inst"))||1)); item.inst = n;
+    const label = `${colName(col, it)}：${it.name}`, src = `${col}:${id}:${date}`;
+    const start = d.get("start") || String(date).slice(0,7);
+    const prev = recordsFor(col, id, date), prevInst = prev.find(r => r.kind === "inst");
+    // clear any earlier record of this same completion so pressing Done again never duplicates
+    prev.forEach(r => { if (r.kind === "spend") delMonthItem("spend", r.ym, r.x.id); else if (!(d.get("log") && price && n >= 2)) removeDoc("installments", r.p.id); });
+    saveDoc(col, item);
+    if (d.get("log") && price){
+      if (n >= 2){
+        if (prevInst && prev.filter(r => r.kind === "inst").length > 1) prev.filter(r => r.kind === "inst").slice(1).forEach(r => removeDoc("installments", r.p.id));
+        return addInstallment({id: prevInst?.p.id, name: label, cat: colCat(col, it), total: price, n, start, date, src});
+      }
+      if (prevInst) prev.filter(r => r.kind === "inst").forEach(r => removeDoc("installments", r.p.id));
+      addMonthItem("spend", {date, amount: price, cat: colCat(col, it), note: label, src});
+    }
+    const nx = due(item, col === "supplies" ? leadSupply() : leadHealth()).next, nxt = nx ? `・下次提醒 ${mdEn(nx)}` : "";
+    toast(prev.length ? "已更新原本的記錄" : d.get("log") && price ? `已完成，記入 ${money(price)}${nxt}` : `已完成${nxt}`);
+}
+function pastBooked(pid){
+  const now = new Date(), t = iso(now), hm = String(now.getHours()).padStart(2,"0") + ":" + String(now.getMinutes()).padStart(2,"0");
+  return S.health.filter(it => it.booked && (!pid || pageOf(it) === pid)
+    && (it.booked < t || (it.booked === t && (it.bookedEnd || it.bookedTime) && (it.bookedEnd || it.bookedTime) <= hm)))
+    .sort((a, b) => (a.booked + (a.bookedTime||"")).localeCompare(b.booked + (b.bookedTime||"")));
+}
+function askDoneSec(pid){
+  const list = pastBooked(pid); if (!list.length) return "";
+  return `<section class="sec askdone"><div class="sec-h"><span>做完了嗎？</span><b>${list.length} 項</b></div><div class="group">${list.map(it => {
+    const p = Number(it.price)||0, when = `${mdEn(parseISO(it.booked))}${it.bookedTime ? ` ${it.bookedTime}` : ""}`;
+    return `<div class="rowi askrow"><span class="main"><span class="t">${esc(it.name)}</span><span class="s">${esc(pageName(it))}・預約 ${when}${p ? `・${money(p)}` : ""}</span></span>
+      <span class="askacts"><button class="btn sm" data-act="quickDone" data-id="${it.id}">Done${p ? ` · ${money(p)}` : ""}</button>
+      <button class="link" data-act="done" data-col="health" data-id="${it.id}">Edit amount</button>
+      <button class="link" data-act="book" data-col="health" data-id="${it.id}">Missed / Reschedule</button></span></div>`; }).join("")}</div>
+    <div class="sec-f">按「Done」會自動記一筆支出、排好下一次提醒，日曆上會留下劃掉的完成紀錄，不用再另外記帳。</div></section>`;
+}
 function openBook(id){
   const it = S.health.find(x => x.id === id); if (!it) return;
   const x = due(it, leadHealth()), def = it.booked || iso(x.next && x.next > today0() ? x.next : addDays(today0(), 7));
@@ -2788,18 +2843,19 @@ function openEvent(dateIso, idx){
       ${(() => { const B = (act, label, extra = "", red) => `<button class="btn sm gray" type="button" data-act="${act}" data-d="${dateIso}" data-i="${idx}" ${extra}${red ? ' style="color:var(--red)"' : ""}>${label}</button>`;
         let bt = "";
         if (e.type === "gcal" && e.cal && (!window.LIFE || e.cal === S.settings?.gcalTarget)) bt = B("editGEvent", "編輯行程") + B("delGEvent", "刪除行程", "", true);
+        else if (e.type === "health" && e.rec) bt = B("evItem", "編輯", `data-col="health" data-id="${e.id}"`);
         else if (e.type === "health") bt = B("evBook", e.booked ? "改預約日期" : "預約", `data-id="${e.id}"`) + B("evItem", "編輯", `data-col="health" data-id="${e.id}"`);
         else if (e.type === "supply") bt = B("evItem", "編輯品項", `data-col="supplies" data-id="${e.id}"`);
         else if (e.type === "task") bt = B("evTask", "編輯任務", `data-id="${e.id}"`);
         else if (e.type === "workout") bt = B("evWorkout", "編輯", `data-id="${e.id}" data-ym="${dateIso.slice(0,7)}"`);
         return bt ? `<div class="row" style="justify-content:flex-end">${bt}</div>` : ""; })()}
-      <div class="sub-h" style="padding:0 4px">為這個活動記一筆支出</div>
+      ${e.rec ? `<div class="note" style="padding:0 4px">已完成。按 Done 時已經記入支出，不用再記一次。</div>` : `<div class="sub-h" style="padding:0 4px">為這個活動記一筆支出</div>
       <div class="group">${fld("金額", `<input id="ev-amt" name="amount" type="number" min="0" step="1" inputmode="numeric" placeholder="0">`)}
         ${fld("備註", `<input id="ev-note" name="note" type="text" value="${esc(e.text)}">`)}
         ${fld("類別", `<select id="ev-cat" name="cat">${cats.map(c => `<option ${c===guess?"selected":""}>${esc(c)}</option>`).join("")}</select>`)}
         ${fld("付款", `<select id="ev-pay" name="pay"><option value="card" ${""!=="cash"?"selected":""}>刷卡</option><option value="cash" ${""==="cash"?"selected":""}>現金</option></select>`)}
         </div>
-      <details class="adv"><summary>進階選項</summary><div class="group">${fld("分期期數", `<input id="ev-n" name="n" type="number" min="1" max="60" value="1">`)}</div></details>
+      <details class="adv"><summary>進階選項</summary><div class="group">${fld("分期期數", `<input id="ev-n" name="n" type="number" min="1" max="60" value="1">`)}</div></details>`}
       <div class="group"><button class="link" type="button" data-act="openDay" data-d="${dateIso}" style="padding:12px">查看這一天</button></div>
     </div></form>`;
   if (!dlg.open) dlg.showModal();
@@ -3134,25 +3190,7 @@ dlg.addEventListener("submit", e => {
     else if (!id && fm.dataset.page && fm.dataset.page !== "health") item.page = fm.dataset.page;
     saveDoc(col, item);
   } else if (fm.dataset.form === "restock"){
-    const it = S[col].find(x => x.id === id); if (!it) return;
-    const date = d.get("date"), price = Number(d.get("price"))||0;
-    const item = {...it, last: date, booked: "", bookedTime: "", bookedEnd: "", bookedWhere: "", snooze: ""}; if (price) item.price = price;
-    const n = Math.max(1, Math.round(Number(d.get("inst"))||1)); item.inst = n;
-    const label = `${colName(col, it)}：${it.name}`, src = `${col}:${id}:${date}`;
-    const start = d.get("start") || String(date).slice(0,7);
-    const prev = recordsFor(col, id, date), prevInst = prev.find(r => r.kind === "inst");
-    // clear any earlier record of this same completion so pressing Done again never duplicates
-    prev.forEach(r => { if (r.kind === "spend") delMonthItem("spend", r.ym, r.x.id); else if (!(d.get("log") && price && n >= 2)) removeDoc("installments", r.p.id); });
-    saveDoc(col, item);
-    if (d.get("log") && price){
-      if (n >= 2){
-        if (prevInst && prev.filter(r => r.kind === "inst").length > 1) prev.filter(r => r.kind === "inst").slice(1).forEach(r => removeDoc("installments", r.p.id));
-        return addInstallment({id: prevInst?.p.id, name: label, cat: colCat(col, it), total: price, n, start, date, src});
-      }
-      if (prevInst) prev.filter(r => r.kind === "inst").forEach(r => removeDoc("installments", r.p.id));
-      addMonthItem("spend", {date, amount: price, cat: colCat(col, it), note: label, src});
-    }
-    toast(prev.length ? "已更新原本的記錄" : d.get("log") && price ? `已更新，記入 ${money(price)}` : "已更新");
+    completeItem(col, id, k => d.get(k));
   } else if (fm.dataset.form === "editspend"){
     const oldYm = fm.dataset.ym, amount = Number(d.get("amount"))||0, date = d.get("date");
     if (!amount) { e.preventDefault(); return toast("請輸入金額"); }
@@ -3327,6 +3365,9 @@ document.addEventListener("click", async e => {
   if (a === "restock" || a === "done") return openRestock(b.dataset.col, b.dataset.id);
   if (a === "book") return openBook(b.dataset.id);
   if (a === "snooze") return openSnooze(b.dataset.id);
+  if (a === "quickDone"){ const it = S.health.find(x => x.id === b.dataset.id); if (!it) return;
+    const vals = {date: it.booked > iso(new Date()) ? iso(new Date()) : it.booked, price: it.price || "", inst: it.inst || 1, start: "", log: "on"};
+    return completeItem("health", it.id, k => vals[k]); }
   if (a === "unbook"){ dlg.close(); const it = S.health.find(x => x.id === b.dataset.id); if (it) saveDoc("health", {...it, booked: "", bookedTime: "", bookedEnd: "", bookedWhere: ""}); return toast("已取消預約"); }
   if (a === "delItem"){ dlg.close(); return deleteRow({kind:b.dataset.col, id:b.dataset.id}); }
   if (a === "initSettings"){ S.settings = {startMonth:ymOf(new Date()), tutor:{rate:0, weekdays:[], perDay:1, skip:{}}, salary:{}, bonus:{}, fixed:[], fx:{usd:32, fee:0.015}, savings:[], goals:{gymPerWeek:2, racketDays:14}, leadSupply:7, leadHealth:14}; return saveSettings(); }
@@ -3604,6 +3645,11 @@ function desiredEvents(){
         ...(it.booked && it.bookedTime ? {st: it.bookedTime, et: it.bookedEnd || it.bookedTime} : {}), ...(it.booked && it.bookedWhere ? {loc: it.bookedWhere} : {}),
         description: `${it.price ? `金額 ${money(it.price)}${(Number(it.inst)||1) >= 2 ? `，分 ${it.inst} 期` : ""}・` : ""}來自 👾👾👾 生活管理`};
     }
+  }
+  const recFrom = iso(addDays(t0, -90)) > startYm() + "-01" ? iso(addDays(t0, -90)) : startYm() + "-01";
+  for (const it of S.health) for (const h of doneLog(it)){
+    if (h.date < recFrom || h.date > iso(t0)) continue;
+    out[`hdone:${it.id}:${h.date}`] = {summary: `${GPREFIX}✓ ${colName("health", it)}：${it.name}（已完成）`, date: h.date, ...(h.st ? {st: h.st, et: h.et || h.st} : {}), description: "已完成・來自 👾👾👾 生活管理"};
   }
   for (const x of lateByTask()) out[`late:${x.t.id}`] = {summary: `${GPREFIX}${x.t.name}（未完成）`, date: iso(t0), description: `原本 ${iso(x.date)}・完成後勾選就會移除・來自 👾👾👾 生活管理`};
   for (const w of allWorkouts()) out[`workout:${w.id}`] = {summary: `${GPREFIX}${actName(w.type)}`, date: w.date, description: "打卡記錄・來自 👾👾👾 生活管理"};

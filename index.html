@@ -948,12 +948,13 @@ const READ_SCOPE = "https://www.googleapis.com/auth/calendar.readonly"; // 選�
   /* ---------- Google 日曆與試算表（取代 Claude 連接器） ---------- */
   const offs = () => { const m = -new Date().getTimezoneOffset(), a = Math.abs(m); return (m >= 0 ? "+" : "-") + String(Math.floor(a / 60)).padStart(2, "0") + ":" + String(a % 60).padStart(2, "0"); };
   const rfc = t => /([zZ]|[+-]\d\d:\d\d)$/.test(t) ? t : t + offs();
-  function evBody(i){
+  function evBody(i, patch){
     const b = {};
     for (const k of ["summary", "description", "location"]) if (i[k] != null) b[k] = i[k];
     if (i.startTime){
-      if (i.allDay){ b.start = {date: i.startTime.slice(0, 10)}; b.end = {date: (i.endTime || i.startTime).slice(0, 10)}; }
-      else { b.start = {dateTime: rfc(i.startTime), timeZone: tz}; b.end = {dateTime: rfc(i.endTime || i.startTime), timeZone: tz}; }
+      // 修改既有行程時，要把另一種時間格式清掉（整天 ↔ 有時段），不然 Google 會拒絕
+      if (i.allDay){ b.start = {date: i.startTime.slice(0, 10), ...(patch ? {dateTime: null, timeZone: null} : {})}; b.end = {date: (i.endTime || i.startTime).slice(0, 10), ...(patch ? {dateTime: null, timeZone: null} : {})}; }
+      else { b.start = {dateTime: rfc(i.startTime), timeZone: tz, ...(patch ? {date: null} : {})}; b.end = {dateTime: rfc(i.endTime || i.startTime), timeZone: tz, ...(patch ? {date: null} : {})}; }
     }
     if (i.recurrenceData) b.recurrence = i.recurrenceData;
     if (i.availability) b.transparency = i.availability === "AVAILABILITY_FREE" ? "transparent" : "opaque";
@@ -968,7 +969,7 @@ const READ_SCOPE = "https://www.googleapis.com/auth/calendar.readonly"; // 選�
       const j = await api(evUrl(calendarId) + "?" + q); return {events: j.items || []};
     },
     async create_event(i){ const j = await api(evUrl(i.calendarId), {method: "POST", body: JSON.stringify(evBody(i))}); return {id: j.id}; },
-    async update_event(i){ const j = await api(evUrl(i.calendarId, i.eventId), {method: "PATCH", body: JSON.stringify(evBody(i))}); return {id: j.id}; },
+    async update_event(i){ const j = await api(evUrl(i.calendarId, i.eventId), {method: "PATCH", body: JSON.stringify(evBody(i, true))}); return {id: j.id}; },
     async delete_event(i){ await api(evUrl(i.calendarId, i.eventId), {method: "DELETE"}); return {}; },
     async list_calendars(){
       const own = profile?.calId ? [{id: profile.calId, summary: profile.calName || "👾生活"}] : [];
@@ -3648,10 +3649,13 @@ async function pushGcal(){
       const times = ev.st ? {startTime: `${ev.date}T${ev.st}:00`, endTime: `${ev.date}T${ev.et > ev.st ? ev.et : ev.st}:00`, allDay: false, ...(ev.loc ? {location: ev.loc} : {})}
         : {startTime: ev.date + "T00:00:00", endTime: plus1(ev.date) + "T00:00:00", allDay: true};
       try {
-        if (cur && !ev.rrule && !cur.rrule){
-          await mcp.callTool(GCAL, "update_event", {...base, eventId: cur.id, summary: ev.summary, description: ev.description, ...times});
-          map[key] = {id: cur.id, sig, cal: target};
-        } else {
+        let updated = false;
+        if (cur && !ev.rrule && !cur.rrule && (cur.cal || target) === target){
+          try { await mcp.callTool(GCAL, "update_event", {...base, eventId: cur.id, summary: ev.summary, description: ev.description, ...times}); updated = true; }
+          catch (err) { if (err?.code !== "tool_error") throw err; } // 行程被刪掉或改不動：改成重新建立
+          if (updated) map[key] = {id: cur.id, sig, cal: target};
+        }
+        if (!updated){
           if (cur) { try { await mcp.callTool(GCAL, "delete_event", {calendarId: cur.cal || target, notificationLevel: "NONE", eventId: cur.id}); } catch {} }
           const r = await mcp.callTool(GCAL, "create_event", {...base, summary: ev.summary, description: ev.description, ...times,
             useDefaultReminders: false, availability: "AVAILABILITY_FREE", ...(ev.rrule ? {recurrenceData: [ev.rrule]} : {})});

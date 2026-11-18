@@ -754,7 +754,7 @@ const LIFE_SCOPES = "openid email profile https://www.googleapis.com/auth/drive.
     history.replaceState(null, "", location.pathname + location.search);
     if (o && h.get("state") === o.state){
       lsSet("oauth", null);
-      if (h.get("access_token")){ token = {t: h.get("access_token"), exp: Date.now() + (Number(h.get("expires_in")) || 3600) * 1000 - 60000}; lsSet("token", token); }
+      if (h.get("access_token")){ token = {t: h.get("access_token"), exp: Date.now() + (Number(h.get("expires_in")) || 3600) * 1000 - 60000}; lsSet("token", token); lsSet("authMode", "redirect"); }
       redirectResult = {error: h.get("error"), pending: o.pending};
     }
   }
@@ -907,6 +907,7 @@ const LIFE_SCOPES = "openid email profile https://www.googleapis.com/auth/drive.
     document.body.appendChild(el);
   }
   async function reconnect(){
+    if (lsGet("authMode", "") === "redirect") return signInRedirect(""); // 這台裝置彈出視窗不能用，直接整頁登入
     const r = await signIn("");
     if (!r?.access_token){ if (r?.error && !/access_denied/.test(r.error)) signInRedirect(""); return; }
     await pull(); await save(); mcp.invalidate();

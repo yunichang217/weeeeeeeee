@@ -446,6 +446,8 @@ dialog form{display:grid;gap:14px;padding:0 0 16px}
 #life-onboard .ob-f input{font:inherit;font-size:1rem;color:var(--ink);background:var(--card);border:1px solid var(--sep);border-radius:12px;padding:12px 14px}
 #life-onboard .ob-btn{font:inherit;font-size:1rem;font-weight:600;border:0;border-radius:14px;padding:14px;background:var(--accent);color:#fff;cursor:pointer}
 #life-onboard .ob-btn:disabled{opacity:.6;cursor:default}
+#life-onboard .ob-link{font:inherit;font-size:.9rem;border:0;background:none;color:var(--accent);text-decoration:underline;cursor:pointer;padding:4px;justify-self:center}
+#life-onboard .ob-link[hidden]{display:none}
 #life-onboard .ob-note{font-size:.8rem;color:var(--muted);line-height:1.6;margin:0}
 #life-onboard .ob-msg{font-size:.88rem;color:var(--accent);min-height:1.2em;margin:0}
 #life-onboard .ob-warn{background:var(--card);border-radius:12px;padding:12px 14px;color:var(--red);font-size:.9rem}
@@ -737,6 +739,25 @@ const LIFE_SCOPES = "openid email profile https://www.googleapis.com/auth/drive.
     });
   }
   initClient().catch(() => {});
+  /* 備用：整頁跳轉到 Google 登入再回來（彈出視窗在某些瀏覽器會失敗） */
+  const REDIRECT = location.origin + location.pathname.replace(/index\.html$/, "");
+  function signInRedirect(prompt, pending){
+    const state = Math.random().toString(36).slice(2) + Date.now().toString(36);
+    lsSet("oauth", {state, pending: pending || null});
+    const q = new URLSearchParams({client_id: GOOGLE_CLIENT_ID, redirect_uri: REDIRECT, response_type: "token", scope: LIFE_SCOPES, include_granted_scopes: "true", state,
+      ...(prompt ? {prompt} : {}), ...(profile?.email ? {login_hint: profile.email} : {})});
+    location.href = "https://accounts.google.com/o/oauth2/v2/auth?" + q;
+  }
+  let redirectResult = null;
+  if (/[#&](access_token|error)=/.test(location.hash)){
+    const h = new URLSearchParams(location.hash.slice(1)), o = lsGet("oauth", null);
+    history.replaceState(null, "", location.pathname + location.search);
+    if (o && h.get("state") === o.state){
+      lsSet("oauth", null);
+      if (h.get("access_token")){ token = {t: h.get("access_token"), exp: Date.now() + (Number(h.get("expires_in")) || 3600) * 1000 - 60000}; lsSet("token", token); }
+      redirectResult = {error: h.get("error"), pending: o.pending};
+    }
+  }
   const valid = () => !!(token && token.exp > Date.now());
   async function api(url, opt = {}){
     if (!valid()){ banner(true); throw {code: "needs_reauth"}; }
@@ -887,7 +908,7 @@ const LIFE_SCOPES = "openid email profile https://www.googleapis.com/auth/drive.
   }
   async function reconnect(){
     const r = await signIn("");
-    if (!r?.access_token) return;
+    if (!r?.access_token){ if (r?.error && !/access_denied/.test(r.error)) signInRedirect(""); return; }
     await pull(); await save(); mcp.invalidate();
   }
   document.addEventListener("click", async e => {
@@ -967,21 +988,33 @@ const LIFE_SCOPES = "openid email profile https://www.googleapis.com/auth/drive.
       ${noId ? `<p class="ob-warn">這份 app 還沒設定 Google 用戶端 ID，請把 runtime 開頭的 GOOGLE_CLIENT_ID 換成你的 ID（見 README）。</p>` : `
       <label class="ob-f">你的名字<input id="ob-name" type="text" autocomplete="name" placeholder="例：小明"></label>
       <button class="ob-btn" type="button" id="ob-go">用 Google 帳號開始</button>
+      <button class="ob-link" type="button" id="ob-alt" hidden>改用整頁登入</button>
       <p class="ob-note">這個 App 只能看到它自己建立的試算表和日曆，看不到你雲端硬碟和日曆裡的其他資料。</p>
       <p class="ob-msg" id="ob-msg" role="status"></p>`}
     </div>`;
     document.body.appendChild(box);
     const go = box.querySelector("#ob-go"); if (!go) return;
     const msg = t => { box.querySelector("#ob-msg").textContent = t; };
-    go.addEventListener("click", async () => {
+    const fail = r => { go.disabled = false; alt.hidden = false; msg((r?.error === "gis_failed" ? "連不到 Google，請確認網路後再試一次"
+        : r?.error === "popup_failed_to_open" ? "登入視窗被擋住了。請允許這個網站彈出視窗，或按下面的「改用整頁登入」。"
+        : r?.error === "access_denied" ? "這個 Google 帳號還沒加入測試使用者，請聯絡分享網址給你的人。"
+        : "沒有完成登入，請按下面的「改用整頁登入」再試一次。") + (r?.error ? `（${r.error}）` : "")); };
+    const read = () => {
       const name = box.querySelector("#ob-name").value.trim(), appName = box.querySelector("#ob-app").value.trim() || "生活管理";
-      if (!name){ msg("請先輸入名字"); box.querySelector("#ob-name").focus(); return; }
+      if (!name){ msg("請先輸入名字"); box.querySelector("#ob-name").focus(); return null; }
+      return {name, appName};
+    };
+    const alt = box.querySelector("#ob-alt");
+    alt.addEventListener("click", () => { const v = read(); if (v) signInRedirect("consent", v); });
+    go.addEventListener("click", async () => {
+      const v = read(); if (!v) return;
       go.disabled = true; msg("正在開啟 Google 登入…");
       const r = await signIn("consent");
-      if (!r?.access_token){ go.disabled = false; msg(r?.error === "gis_failed" ? "連不到 Google，請確認網路後再試一次"
-        : r?.error === "popup_failed_to_open" ? "登入視窗被擋住了。請允許這個網站彈出視窗，或用 Safari、Chrome 直接開啟這個網址。"
-        : r?.error === "access_denied" ? "這個 Google 帳號還沒加入測試使用者，請聯絡分享網址給你的人。"
-        : "沒有完成登入。如果登入視窗一直沒出現，請用 Safari 或 Chrome 直接開啟這個網址再試一次。"); return; }
+      if (!r?.access_token) return fail(r);
+      finish(v.name, v.appName);
+    });
+    async function finish(name, appName){
+      go.disabled = true;
       try {
         msg("正在建立你的試算表和日曆…");
         const me = await api("https://www.googleapis.com/oauth2/v3/userinfo").catch(() => ({}));
@@ -1003,7 +1036,11 @@ const LIFE_SCOPES = "openid email profile https://www.googleapis.com/auth/drive.
         lsSet("profile", profile); loadedRemote = true; dirty = true; persistLocal(); await save();
         box.remove(); resolveReady();
       } catch (e) { go.disabled = false; msg(e?.code === "needs_reauth" ? "Google 授權沒有完成，請再試一次" : "建立時發生問題：" + (e?.message || e?.code || "請稍後再試")); }
-    });
+    }
+    if (redirectResult?.pending){
+      const p = redirectResult.pending; box.querySelector("#ob-name").value = p.name || ""; box.querySelector("#ob-app").value = p.appName === "生活管理" ? "" : (p.appName || "");
+      if (valid()) setTimeout(() => finish(p.name, p.appName), 0); else fail({error: redirectResult.error || "no_token"});
+    }
   }
 
   function start(){

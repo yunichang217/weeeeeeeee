@@ -137,6 +137,11 @@ main{max-width:1000px;margin:0 auto;padding:8px 20px 24px;display:grid;gap:22px}
 .sec{display:grid;gap:6px;min-width:0}
 .sec-h{display:flex;justify-content:space-between;align-items:baseline;padding:0 16px;font-size:.78rem;color:var(--muted);text-transform:uppercase;letter-spacing:.03em}
 .sec-h b{font-weight:400}
+.sec-h.cal-h{flex-direction:column;align-items:flex-start;gap:6px}
+.sec-h.cal-h > span:first-child{white-space:nowrap}
+.sec-h.cal-h{padding-right:0}
+.sec-h.cal-h .legend{gap:8px;line-height:1.5;font-size:.7rem;letter-spacing:0;flex-wrap:nowrap;white-space:nowrap;overflow-x:auto;width:0;min-width:100%;box-sizing:border-box;padding-right:16px;scrollbar-width:none}
+.sec-h.cal-h .legend::-webkit-scrollbar{display:none}
 .sec-f{padding:0 16px;font-size:.76rem;color:var(--muted)}
 .group{background:var(--card);border-radius:16px;overflow:hidden;box-shadow:0 1px 2px rgba(90,70,55,.04)}
 .pad{padding:14px 16px;display:grid;gap:12px}
@@ -792,6 +797,7 @@ const LIFE_BOOK = (() => {
    這段取代原本 Claude 提供的 db 與 mcp，讓 app 可以直接放在任何網站上使用。 */
 const GOOGLE_CLIENT_ID = "121940128769-cks1mevog6e7i2pc911bak545gisgkmg.apps.googleusercontent.com";
 const LIFE_SCOPES = "openid email profile https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/calendar.app.created";
+const READ_SCOPE = "https://www.googleapis.com/auth/calendar.readonly"; // 選用：讀取使用者其他的 Google 日曆（只讀）
 (() => {
   const K = k => "lifeapp:" + k;
   const lsGet = (k, d) => { try { const v = localStorage.getItem(K(k)); return v ? JSON.parse(v) : d; } catch { return d; } };
@@ -800,6 +806,8 @@ const LIFE_SCOPES = "openid email profile https://www.googleapis.com/auth/drive.
   const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || "Asia/Taipei";
   let profile = lsGet("profile", null);   // {name, email, sheetId, calId}
   let token = lsGet("token", null);       // {t, exp}
+  const scopes = extra => LIFE_SCOPES + (extra || lsGet("calRead", false) ? " " + READ_SCOPE : "");
+  const noteScope = sc => { if (sc == null) return; lsSet("calRead", String(sc).includes(READ_SCOPE)); };
   let tokenClient = null, waiters = [];
 
   /* ---------- Google 登入 ---------- */
@@ -814,13 +822,13 @@ const LIFE_SCOPES = "openid email profile https://www.googleapis.com/auth/drive.
     await loadGis(); if (tokenClient) return;
     const done = r => { const w = waiters; waiters = []; w.forEach(f => f(r)); };
     tokenClient = google.accounts.oauth2.initTokenClient({client_id: GOOGLE_CLIENT_ID, scope: LIFE_SCOPES,
-      callback: r => { if (r && r.access_token){ token = {t: r.access_token, exp: Date.now() + (Number(r.expires_in) || 3600) * 1000 - 60000}; lsSet("token", token); banner(false); } done(r || {}); },
+      callback: r => { if (r && r.access_token){ token = {t: r.access_token, exp: Date.now() + (Number(r.expires_in) || 3600) * 1000 - 60000}; lsSet("token", token); noteScope(r.scope); banner(false); } done(r || {}); },
       error_callback: e => done({error: e?.type || "popup_closed"})});
   }
   // 登入視窗要在按下按鈕的同一瞬間打開，Safari 才不會擋；所以 Google 登入元件先預先載好
-  function signIn(prompt){
+  function signIn(prompt, extra){
     return new Promise(res => {
-      const open = () => { waiters.push(res); tokenClient.requestAccessToken({prompt: prompt ?? "", ...(profile?.email ? {hint: profile.email} : {})}); };
+      const open = () => { waiters.push(res); tokenClient.requestAccessToken({prompt: prompt ?? "", scope: scopes(extra), include_granted_scopes: true, ...(profile?.email ? {hint: profile.email} : {})}); };
       if (tokenClient) return open();
       initClient().then(open, () => res({error: "gis_failed"}));
     });
@@ -828,10 +836,10 @@ const LIFE_SCOPES = "openid email profile https://www.googleapis.com/auth/drive.
   initClient().catch(() => {});
   /* 備用：整頁跳轉到 Google 登入再回來（彈出視窗在某些瀏覽器會失敗） */
   const REDIRECT = location.origin + location.pathname.replace(/index\.html$/, "");
-  function signInRedirect(prompt, pending){
+  function signInRedirect(prompt, pending, extra){
     const state = Math.random().toString(36).slice(2) + Date.now().toString(36);
     lsSet("oauth", {state, pending: pending || null});
-    const q = new URLSearchParams({client_id: GOOGLE_CLIENT_ID, redirect_uri: REDIRECT, response_type: "token", scope: LIFE_SCOPES, include_granted_scopes: "true", state,
+    const q = new URLSearchParams({client_id: GOOGLE_CLIENT_ID, redirect_uri: REDIRECT, response_type: "token", scope: scopes(extra), include_granted_scopes: "true", state,
       ...(prompt ? {prompt} : {}), ...(profile?.email ? {login_hint: profile.email} : {})});
     location.href = "https://accounts.google.com/o/oauth2/v2/auth?" + q;
   }
@@ -841,8 +849,8 @@ const LIFE_SCOPES = "openid email profile https://www.googleapis.com/auth/drive.
     history.replaceState(null, "", location.pathname + location.search);
     if (o && h.get("state") === o.state){
       lsSet("oauth", null);
-      if (h.get("access_token")){ token = {t: h.get("access_token"), exp: Date.now() + (Number(h.get("expires_in")) || 3600) * 1000 - 60000}; lsSet("token", token); lsSet("authMode", "redirect"); }
-      redirectResult = {error: h.get("error"), pending: o.pending};
+      if (h.get("access_token")){ token = {t: h.get("access_token"), exp: Date.now() + (Number(h.get("expires_in")) || 3600) * 1000 - 60000}; lsSet("token", token); lsSet("authMode", "redirect"); noteScope(h.get("scope")); }
+      redirectResult = {error: h.get("error"), pending: o.pending, calRead: !!o.calRead};
     }
   }
   const valid = () => !!(token && token.exp > Date.now());
@@ -955,14 +963,23 @@ const LIFE_SCOPES = "openid email profile https://www.googleapis.com/auth/drive.
   const evUrl = (cal, id) => `${CAL}/calendars/${encodeURIComponent(cal)}/events${id ? "/" + encodeURIComponent(id) : ""}`;
   const TOOLS = {
     async list_events({calendarId, startTime, endTime, pageSize}){
-      if (!calendarId || calendarId === "primary") return {events: []};
+      if (!calendarId || (calendarId !== profile?.calId && !lsGet("calRead", false))) return {events: []};
       const q = new URLSearchParams({timeMin: rfc(startTime), timeMax: rfc(endTime), singleEvents: "true", orderBy: "startTime", maxResults: String(pageSize || 250)});
       const j = await api(evUrl(calendarId) + "?" + q); return {events: j.items || []};
     },
     async create_event(i){ const j = await api(evUrl(i.calendarId), {method: "POST", body: JSON.stringify(evBody(i))}); return {id: j.id}; },
     async update_event(i){ const j = await api(evUrl(i.calendarId, i.eventId), {method: "PATCH", body: JSON.stringify(evBody(i))}); return {id: j.id}; },
     async delete_event(i){ await api(evUrl(i.calendarId, i.eventId), {method: "DELETE"}); return {}; },
-    async list_calendars(){ return {calendars: profile?.calId ? [{id: profile.calId, summary: profile.calName || "👾生活"}] : []}; },
+    async list_calendars(){
+      const own = profile?.calId ? [{id: profile.calId, summary: profile.calName || "👾生活"}] : [];
+      if (!lsGet("calRead", false)) return {calendars: own};
+      try {
+        const j = await api(`${CAL}/users/me/calendarList?minAccessRole=reader&maxResults=250`);
+        const list = (j.items || []).map(c => ({id: c.id, summary: c.summaryOverride || c.summary || c.id, primary: !!c.primary}));
+        for (const o of own) if (!list.some(c => c.id === o.id)) list.unshift(o);
+        return {calendars: list};
+      } catch (e) { if (e?.status === 403) lsSet("calRead", false); return {calendars: own}; }
+    },
     async read_file_content({fileId}){
       await idle();
       const j = await api(`${SHEETS}/${fileId}/values/${rng("收支表!A1:Z200")}`);
@@ -993,6 +1010,20 @@ const LIFE_SCOPES = "openid email profile https://www.googleapis.com/auth/drive.
     el.innerHTML = `<span>Google 連線已過期，資料先存在這台裝置。</span><button type="button" data-life="reconnect">重新連線</button>`;
     document.body.appendChild(el);
   }
+  async function grantRead(){
+    if (lsGet("authMode", "") === "redirect"){ lsSet("calReadAsk", true); return signInRedirect("consent", null, true); }
+    const r = await signIn("consent", true);
+    if (!r?.access_token){ if (r?.error && !/access_denied/.test(r.error)){ lsSet("calReadAsk", true); signInRedirect("consent", null, true); } return; }
+    afterRead();
+  }
+  function afterRead(){
+    const ok = lsGet("calRead", false);
+    try { mcp.invalidate(); } catch {}
+    if (typeof gcalWatchKey !== "undefined") gcalWatchKey = null;
+    if (typeof loadCalendars === "function") loadCalendars(true);
+    if (typeof toast === "function") toast(ok ? "已可以讀取你的 Google 日曆，請勾選要顯示的日曆" : "沒有拿到日曆權限，請再試一次，並勾選「查看你的日曆」");
+  }
+  if (lsGet("calReadAsk", false) && redirectResult){ lsSet("calReadAsk", false); setTimeout(afterRead, 2500); }
   async function reconnect(){
     if (lsGet("authMode", "") === "redirect") return signInRedirect(""); // 這台裝置彈出視窗不能用，直接整頁登入
     const r = await signIn("");
@@ -1003,6 +1034,7 @@ const LIFE_SCOPES = "openid email profile https://www.googleapis.com/auth/drive.
     const b = e.target.closest && e.target.closest("[data-life]"); if (!b) return;
     const a = b.dataset.life;
     if (a === "reconnect") return reconnect();
+    if (a === "calread") return grantRead();
     if (a === "logout"){ if (!window.confirmLife || await window.confirmLife("登出後，這台裝置的資料會清掉，Google 試算表裡的資料還在。要登出嗎？")){ for (const k of Object.keys(localStorage)) if (k.startsWith("lifeapp:")) localStorage.removeItem(k); try { google.accounts.oauth2.revoke(token?.t || "", () => {}); } catch {} location.reload(); } }
     if (a === "newsheet"){ if (!window.confirmLife || await window.confirmLife("會建立一份全新的空白試算表，現在的資料留在舊的試算表裡。要繼續嗎？")){ const n = profile?.name || ""; lsSet("profile", null); lsSet(localKey(), null); profile = null; location.reload(); } }
   });
@@ -1141,6 +1173,7 @@ const LIFE_SCOPES = "openid email profile https://www.googleapis.com/auth/drive.
 
   window.LIFE = {
     profile: () => profile,
+    calRead: () => !!lsGet("calRead", false),
     accountSec(){
       if (!profile) return "";
       const body = `<div class="rowi"><span class="main"><span class="t">${esc(profile.name)}</span><span class="s">${esc(profile.email || "")}</span></span>
@@ -1899,7 +1932,7 @@ function renderMonth(c){
       ${sp ? `<span class="sp">${money(sp)}</span>` : ""}</div>`;
   }
   const actNote = actGroups().map(g => { const ids = g.acts.map(a => a.id); return `${g.acts.map(a => a.name).join(" / ")} ${allWorkouts().filter(x => ids.includes(x.type) && x.date.startsWith(ym)).length} 次`; }).join("・");
-  return `<section class="sec"><div class="sec-h"><span>${ymEn(ym)}</span><span class="legend" style="text-transform:none"><span style="color:var(--accent)">Tasks</span><span style="color:var(--ink)">Work</span><span style="color:var(--teal)">Income</span>${acts().length ? `<span style="color:var(--indigo)">${customActs() ? "Check check" : "Workout"}</span>` : ""}<span style="color:var(--orange)">Supplies</span>${pages().length ? `<span style="color:var(--green)">${esc(careLabel())}</span>` : ""}</span></div>
+  return `<section class="sec"><div class="sec-h cal-h"><span>${ymEn(ym)}</span><span class="legend" style="text-transform:none"><span style="color:var(--accent)">Tasks</span><span style="color:var(--ink)">Work</span><span style="color:var(--teal)">Income</span>${acts().length ? `<span style="color:var(--indigo)">${customActs() ? "Check check" : "Workout"}</span>` : ""}<span style="color:var(--orange)">Supplies</span>${pages().length ? `<span style="color:var(--green)">${esc(careLabel())}</span>` : ""}</span></div>
     <div class="group"><div class="cal">${cells}</div></div>
     <div class="sec-f">${actNote ? `本月 ${esc(actNote)}　` : ""}${gcalNote()}　${gpushNote()}</div></section>`;
 }
@@ -2205,7 +2238,7 @@ function guideSec(){
     <p style="margin:0 0 8px"><b>記帳</b>：右下角「＋」可以記一筆支出、記餐費、加入待買。清單裡已經預扣的東西打勾就好。</p>
     <p style="margin:0 0 8px"><b>自訂分頁</b>：在 Settings → Categories 新增像「Self care」「寵物」「汽車保養」的分頁，放定期要做的事，設定多久一次和金額，到期前會提醒、可以記預約時間。</p>
     <p style="margin:0 0 8px"><b>Google 試算表</b>：Settings → Account 裡的「開啟試算表」可以打開。「收支表」可以改收入、固定支出、餐費和儲蓄，App 會跟著調整，在 App 改也會寫回去；「薪資明細」可以算勞健保和實領；「支出紀錄」是每一筆花費。</p>
-    <p style="margin:0 0 8px"><b>Google 日曆</b>：任務、補貨、預約和新增的行程會寫進 App 自己建立的日曆，手機的日曆 App 也看得到。</p>
+    <p style="margin:0 0 8px"><b>Google 日曆</b>：任務、補貨、預約和新增的行程會寫進 App 自己建立的日曆，手機的日曆 App 也看得到。在 Settings → Google 按「匯入其他 Google 日曆」，就能把工作、課表等日曆的行程顯示在月曆上，點行程可以直接記一筆支出。</p>
     <p style="margin:0"><b>手機桌面</b>：iPhone 用 Safari 開，按分享 →「加入主畫面」；Android 用 Chrome 選「安裝應用程式」。</p>
   </div>`;
 }
@@ -2316,7 +2349,7 @@ function renderSettings(ym){
     <div class="frow" style="grid-template-columns:1fr auto">
       <label class="f">寫入哪個日曆<select id="s-gtarget" data-gtarget>
         <option value="">— 請選擇生活用的日曆 —</option>
-        ${(S.calList || []).map(c => `<option value="${esc(c.id)}" ${c.id === S.settings?.gcalTarget ? "selected" : ""}>${esc(c.summary || c.id)}</option>`).join("")}
+        ${(S.calList || []).filter(c => !window.LIFE || c.id === S.settings?.gcalTarget || c.id === window.LIFE.profile()?.calId).map(c => `<option value="${esc(c.id)}" ${c.id === S.settings?.gcalTarget ? "selected" : ""}>${esc(c.summary || c.id)}</option>`).join("")}
         ${S.settings?.gcalTarget && !(S.calList||[]).some(c => c.id === S.settings.gcalTarget) ? `<option value="${esc(S.settings.gcalTarget)}" selected>${esc(S.settings.gcalTargetName || S.settings.gcalTarget)}</option>` : ""}
       </select></label>
       <button class="link" data-act="reloadCals" style="align-self:end">${S.calList ? "重新整理清單" : "讀取日曆清單"}</button>
@@ -2328,6 +2361,8 @@ function renderSettings(ym){
         return `<label><input id="gs-${i}" type="checkbox" data-gshow value="${esc(c.id)}" ${on ? "checked" : ""}><span>${esc(c.summary || c.id)}${c.id === S.settings?.gcalTarget ? `<em>寫入中</em>` : ""}</span></label>`; }).join("")}</div>`
         : `<div class="note">按右邊「讀取日曆清單」載入你的日曆。</div>`}
     </div>
+    ${window.LIFE ? (window.LIFE.calRead() ? `<div class="note">勾選的日曆會出現在首頁月曆上，點行程就能為它記一筆支出。</div>`
+      : `<div class="row between"><span class="note">想在月曆上看到其他日曆的行程（例如工作、課表），可以匯入。只會讀取，不會改動那些日曆。</span><button class="link" type="button" data-life="calread" style="white-space:nowrap">＋ 匯入其他 Google 日曆</button></div>`) : ""}
     ${CLOSE}`,
     pages: `${actManager()}${catManager()}${pageManager()}${spendCatSection()}`,
     labels: labelManager(),
@@ -2751,7 +2786,7 @@ function openEvent(dateIso, idx){
         ${e.link ? `<div class="fld"><span>Google 日曆</span><a href="${esc(e.link)}" target="_blank" rel="noopener" style="text-align:right;color:var(--accent)">開啟活動 ↗</a></div>` : ""}</div>
       ${(() => { const B = (act, label, extra = "", red) => `<button class="btn sm gray" type="button" data-act="${act}" data-d="${dateIso}" data-i="${idx}" ${extra}${red ? ' style="color:var(--red)"' : ""}>${label}</button>`;
         let bt = "";
-        if (e.type === "gcal" && e.cal) bt = B("editGEvent", "編輯行程") + B("delGEvent", "刪除行程", "", true);
+        if (e.type === "gcal" && e.cal && (!window.LIFE || e.cal === S.settings?.gcalTarget)) bt = B("editGEvent", "編輯行程") + B("delGEvent", "刪除行程", "", true);
         else if (e.type === "health") bt = B("evBook", e.booked ? "改預約日期" : "預約", `data-id="${e.id}"`) + B("evItem", "編輯", `data-col="health" data-id="${e.id}"`);
         else if (e.type === "supply") bt = B("evItem", "編輯品項", `data-col="supplies" data-id="${e.id}"`);
         else if (e.type === "task") bt = B("evTask", "編輯任務", `data-id="${e.id}"`);
